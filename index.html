@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citation Verifier</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root{
+  --shell-bg: #1B222C;
+  --shell-bg-2: #232C38;
+  --paper-text: #EAE6D9;
+  --paper-text-dim: #9AA1AC;
+  --card-bg: #EEE6CE;
+  --card-bg-strip: #E4D8B5;
+  --ink: #24272B;
+  --ink-dim: #6B6455;
+  --rule: #C3B78F;
+  --verified: #2F6B4F;
+  --flagged: #A9691B;
+  --hallucinated: #A23B2E;
+  --neutral-stamp: #55606B;
+  --font-display: 'Roboto Slab', Rockwell, 'Rockwell Nova', ui-serif, Georgia, serif;
+  --font-body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(ellipse at top, var(--shell-bg-2), var(--shell-bg) 60%);
+  color: var(--paper-text);
+  font-family: var(--font-body);
+  min-height:100vh;
+  padding: 32px 20px 80px;
+}
+
+.wrap{ max-width: 880px; margin: 0 auto; }
+
+header.masthead{
+  border-bottom: 2px solid #3A4453;
+  padding-bottom: 20px;
+  margin-bottom: 28px;
+}
+.eyebrow{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #7C8AA0;
+  margin-bottom: 10px;
+}
+h1{
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(28px, 4vw, 40px);
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+.subtitle{
+  color: var(--paper-text-dim);
+  font-size: 14.5px;
+  line-height: 1.6;
+  max-width: 640px;
+}
+.subtitle b{ color: var(--paper-text); font-weight: 600; }
+
+.sources-row{
+  display:flex; gap:10px; flex-wrap:wrap; margin-top: 14px;
+}
+.source-chip{
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  border: 1px solid #3A4453;
+  border-radius: 3px;
+  padding: 4px 9px;
+  color: #B7C0CC;
+}
+
+/* Input card */
+.intake{
+  background: var(--card-bg);
+  border-radius: 4px;
+  padding: 22px 22px 18px;
+  position: relative;
+  box-shadow: 0 18px 40px -20px rgba(0,0,0,0.55);
+}
+.intake::before{
+  content:"";
+  position:absolute; inset:0;
+  border-radius:4px;
+  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 26px);
+  pointer-events:none;
+}
+.intake-label{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 10px;
+  display:flex; justify-content:space-between; align-items:baseline;
+}
+textarea{
+  width:100%;
+  min-height: 160px;
+  resize: vertical;
+  background: transparent;
+  border: none;
+  border-top: 1px dashed var(--rule);
+  padding-top: 14px;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink);
+  outline:none;
+}
+textarea::placeholder{ color: #9C9576; }
+
+.intake-footer{
+  display:flex; align-items:center; justify-content: space-between;
+  margin-top: 14px; gap: 12px; flex-wrap: wrap;
+}
+.hint{ font-size: 12px; color: var(--ink-dim); max-width: 380px; line-height:1.5;}
+
+button.primary{
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--card-bg);
+  border: none;
+  padding: 12px 20px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+}
+button.primary:hover:not(:disabled){ background:#3a3227; }
+button.primary:active:not(:disabled){ transform: translateY(1px); }
+button.primary:disabled{ opacity:0.55; cursor: default; }
+
+button.ghost{
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid #3A4453;
+  color: #B7C0CC;
+  padding: 8px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+button.ghost:hover{ border-color:#5B6A80; color:#fff; }
+
+/* Summary strip */
+.summary{
+  display:none;
+  margin-top: 26px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items:center;
+  color: #C7CDD6;
+}
+.summary.show{ display:flex; }
+.summary .count{ font-weight:600; }
+.summary .dot{ color: #4E596A; }
+.count.verified{ color:#7FBE9E; }
+.count.review{ color:#E3AC64; }
+.count.notfound{ color:#E38A7A; }
+
+.filter-item{
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.filter-item:hover{ background: rgba(255,255,255,0.06); }
+.filter-item.active{
+  background: rgba(255,255,255,0.09);
+  border-color: #4E596A;
+}
+.filter-clear{
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #8E9DB3;
+  cursor: pointer;
+  text-decoration: underline;
+  display: none;
+}
+.filter-clear.show{ display: inline; }
+
+/* Confirmed bibliography panel */
+.confirmed-panel{
+  display: none;
+  margin-top: 28px;
+  background: var(--card-bg);
+  border-radius: 4px;
+  padding: 20px 22px 22px;
+  position: relative;
+  box-shadow: 0 14px 30px -18px rgba(0,0,0,0.5);
+}
+.confirmed-panel.show{ display: block; }
+.confirmed-panel::before{
+  content:"";
+  position:absolute; inset:0;
+  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 26px);
+  pointer-events:none;
+}
+.confirmed-head{
+  display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px;
+  margin-bottom: 14px;
+}
+.confirmed-title{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.style-tabs{ display:flex; gap:6px; flex-wrap:wrap; }
+.style-tab{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink-dim);
+  padding: 5px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.style-tab:hover{ border-color: var(--ink-dim); color: var(--ink); }
+.style-tab.active{ background: var(--ink); color: var(--card-bg); border-color: var(--ink); }
+
+.citation-list{
+  border-top: 1px dashed var(--rule);
+  padding-top: 14px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.citation-entry{
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  padding-left: 22px;
+  text-indent: -22px;
+}
+.citation-entry a{ color: #2E5C8A; }
+
+.confirmed-footer{
+  display:flex; gap:10px; flex-wrap:wrap;
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px dashed var(--rule);
+}
+.confirmed-footer button{
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--ink-dim);
+  color: var(--ink);
+  padding: 7px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.confirmed-footer button:hover{ background: rgba(0,0,0,0.06); }
+.confirmed-empty{ font-size: 12.5px; color: var(--ink-dim); font-style: italic; }
+
+/* Results list */
+#results{ margin-top: 22px; display:flex; flex-direction:column; gap:18px; }
+
+.card{
+  background: var(--card-bg);
+  border-radius: 4px;
+  padding: 18px 20px 20px;
+  position: relative;
+  box-shadow: 0 14px 30px -18px rgba(0,0,0,0.5);
+  overflow:hidden;
+}
+.card::before{
+  content:"";
+  position:absolute; inset:0;
+  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 26px);
+  pointer-events:none;
+}
+.card-top{
+  display:flex; justify-content:space-between; align-items:flex-start; gap:14px;
+  margin-bottom: 10px;
+}
+.card-index{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 0.08em;
+}
+.ref-text{
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink);
+  border-top: 1px dashed var(--rule);
+  padding-top: 10px;
+  margin-top: 2px;
+}
+
+/* stamp */
+.stamp{
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border: 2.5px solid currentColor;
+  border-radius: 3px;
+  white-space: nowrap;
+  transform: rotate(var(--tilt, -3deg));
+  opacity: 0.92;
+  flex-shrink: 0;
+}
+@media (prefers-reduced-motion: no-preference){
+  .stamp.animate{
+    animation: stampdown 0.28s cubic-bezier(.2,1.4,.5,1) both;
+  }
+}
+@keyframes stampdown{
+  0%{ transform: rotate(var(--tilt,-3deg)) scale(2.2); opacity:0; }
+  70%{ opacity: 1; }
+  100%{ transform: rotate(var(--tilt,-3deg)) scale(1); opacity:0.92; }
+}
+.stamp.pending{ color: var(--neutral-stamp); border-style: dashed; }
+.stamp.verified{ color: var(--verified); }
+.stamp.review{ color: var(--flagged); }
+.stamp.notfound{ color: var(--hallucinated); }
+.stamp.checkfail{ color: var(--neutral-stamp); border-style: dashed; }
+
+.retry-btn{
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink-dim);
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  margin-top: 8px;
+  display: none;
+}
+.retry-btn.show{ display: inline-block; }
+.retry-btn:hover{ border-color: var(--ink-dim); color: var(--ink); }
+
+.meta{
+  margin-top: 12px;
+  border-top: 1px dashed var(--rule);
+  padding-top: 12px;
+  font-size: 12.5px;
+  color: var(--ink);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 10px;
+  align-items:baseline;
+}
+.meta .k{ font-family: var(--font-mono); font-size:10.5px; letter-spacing:0.07em; text-transform:uppercase; color: var(--ink-dim); }
+.meta .v a{ color: #2E5C8A; }
+.meta .v{ line-height:1.5; }
+
+.score-row{
+  margin-top: 10px; display:flex; align-items:center; gap:8px;
+}
+.score-track{ flex:1; height:5px; background: rgba(0,0,0,0.12); border-radius:3px; overflow:hidden; }
+.score-fill{ height:100%; border-radius:3px; background: var(--ink); }
+.score-label{ font-family: var(--font-mono); font-size:11px; color: var(--ink-dim); white-space:nowrap; }
+
+.pending-text{ font-size:12.5px; color: var(--ink-dim); font-style: italic; margin-top:10px;}
+.error-note{ font-size: 11.5px; color: #8a5a4a; font-family: var(--font-mono); margin-top:8px; }
+
+/* methodology */
+details.methodology{
+  margin-top: 34px;
+  border-top: 1px solid #3A4453;
+  padding-top: 16px;
+  color: #A8B0BC;
+  font-size: 13px;
+  line-height: 1.7;
+}
+details.methodology summary{
+  cursor:pointer; font-family: var(--font-mono); font-size:12px;
+  letter-spacing:0.06em; text-transform:uppercase; color:#B7C0CC;
+  margin-bottom: 10px;
+}
+details.methodology ul{ padding-left: 18px; margin: 8px 0; }
+details.methodology li{ margin-bottom: 6px; }
+details.methodology code{
+  font-family: var(--font-mono);
+  background: rgba(255,255,255,0.06);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 12px;
+}
+
+.empty-note{
+  color: var(--paper-text-dim); font-size:13px; margin-top:20px; display:none;
+}
+.empty-note.show{ display:block; }
+
+.colophon{
+  margin-top: 30px;
+  padding-top: 16px;
+  border-top: 1px dashed #3A4453;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  color: #6E7889;
+}
+.colophon a{ color: #8E9DB3; }
+.colophon a:hover{ color: #C7CDD6; }
+
+@media (max-width: 560px){
+  .meta{ grid-template-columns: 1fr; }
+  .meta .k{ margin-top:6px; }
+  .card-top{ flex-direction:column; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Reference Integrity Check</div>
+    <h1>Citation Verifier</h1>
+    <p class="subtitle">Paste a bibliography below. Each entry gets looked up against five live scholarly indexes and stamped <b>Verified</b>, <b>Possible Match</b>, or <b>No Match Found</b> based on how closely the returned record matches what was cited.</p>
+    <div class="sources-row">
+      <span class="source-chip">CROSSREF · all disciplines, DOI registry</span>
+      <span class="source-chip">PUBMED · biomedical literature</span>
+      <span class="source-chip">SEMANTIC SCHOLAR · multidisciplinary</span>
+      <span class="source-chip">ARXIV · physics, math, CS, stats preprints</span>
+      <span class="source-chip">BIORXIV / MEDRXIV · life-science &amp; health preprints (via DOI)</span>
+    </div>
+  </header>
+
+  <div class="intake">
+    <div class="intake-label">
+      <span>Bibliography intake</span>
+      <span id="refCount"></span>
+    </div>
+    <textarea id="refsInput" placeholder="Paste references here, one per line — or as a numbered list, e.g.
+
+1. Smith J, Doe A. Effects of X on Y. Journal of Examples. 2021;12(3):45-59.
+2. Lee K. A totally fabricated study of nothing. Nature Fake Reviews. 2023.
+3. https://doi.org/10.1038/s41586-021-03819-2"></textarea>
+    <div class="intake-footer">
+      <div class="hint">Works best with full references (authors, title, year). One entry per line, or a numbered list — wrapped lines are merged automatically.</div>
+      <div style="display:flex; gap:10px;">
+        <button class="ghost" id="clearBtn" type="button">Clear</button>
+        <button class="primary" id="checkBtn" type="button">File &amp; Verify →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-note" id="emptyNote">Paste at least one reference to begin.</div>
+
+  <div class="summary" id="summary">
+    <span class="filter-item" data-filter="verified"><span class="count verified" id="cVerified">0</span> verified</span>
+    <span class="dot">·</span>
+    <span class="filter-item" data-filter="review"><span class="count review" id="cReview">0</span> possible match</span>
+    <span class="dot">·</span>
+    <span class="filter-item" data-filter="notfound"><span class="count notfound" id="cNotfound">0</span> no match / check failed</span>
+    <span class="dot">·</span>
+    <span class="filter-clear" id="filterClear">show all</span>
+    <button class="ghost" id="copyBtn" type="button">Copy report</button>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="confirmed-panel" id="confirmedPanel">
+    <div class="confirmed-head">
+      <div class="confirmed-title">Confirmed bibliography</div>
+      <div class="style-tabs" id="styleTabs">
+        <button class="style-tab active" data-style="apa" type="button">APA</button>
+        <button class="style-tab" data-style="mla" type="button">MLA</button>
+        <button class="style-tab" data-style="chicago" type="button">Chicago</button>
+        <button class="style-tab" data-style="harvard" type="button">Harvard</button>
+        <button class="style-tab" data-style="vancouver" type="button">Vancouver</button>
+      </div>
+    </div>
+    <div class="citation-list" id="citationList"></div>
+    <div class="confirmed-footer">
+      <button class="ghost" id="copyCitationsBtn" type="button">Copy formatted list</button>
+      <button id="exportBibtexBtn" type="button">Download BibTeX (.bib)</button>
+      <button id="exportRisBtn" type="button">Download RIS — EndNote / RefMan / RefWorks (.ris)</button>
+    </div>
+  </div>
+
+  <details class="methodology">
+    <summary>Methodology &amp; limitations</summary>
+    <p>Each reference is checked with a bibliographic search against Crossref and Semantic Scholar, a cleaned term search against PubMed, and a full-text search against arXiv (volume/page/date noise is stripped first for PubMed and arXiv, since raw citation punctuation can trip up their query parsers). Each source returns its top few candidates, not just its #1 ranked guess, and the tool scores every candidate's title against your pasted text — this catches cases where the right paper wasn't ranked first. If a DOI is present in the pasted text, it's confirmed directly against Crossref's registry first and treated as authoritative; DOIs with the <code>10.1101/</code> prefix are also confirmed directly against the bioRxiv and medRxiv preprint APIs.</p>
+    <ul>
+      <li><b>Verified</b> — DOI confirmed (including via bioRxiv/medRxiv), or ≥75% word overlap with a real indexed record.</li>
+      <li><b>Possible match</b> — 40–75% overlap. Worth a manual glance; could be a paraphrased title, a preprint vs. published version, or a partial citation.</li>
+      <li><b>No match / check failed</b> — either no record cleared 40% overlap in any of the four searchable indexes, or at least two of them couldn't be reached (network issue or rate limit) — both are folded into one neutral count so an unreachable API is never confused with a real non-match. Each card says which case it is, and has a recheck button.</li>
+    </ul>
+    <p><b>Google Scholar isn't included</b> — it has no public API, and scraping it violates its terms of service and gets blocked by CAPTCHA in practice. <b>bioRxiv/medRxiv's own search isn't included either</b>, for a related reason: their public API only supports direct DOI lookups, not free-text search, so bioRxiv/medRxiv coverage here is DOI-only. Crossref, PubMed, Semantic Scholar, and arXiv together cover the large majority of what Scholar indexes for genuinely published or preprinted work, and return structured metadata rather than scraped HTML, which is what makes this kind of automated check possible at all.</p>
+    <p><b>A "no match" is a signal to check by hand, never proof of fabrication.</b> Very new papers, non-English titles, book chapters, conference proceedings, and paywalled or niche sources can all be under-indexed or absent from these databases even when they're completely real. Semantic Scholar's free public API in particular has a low, shared rate limit and can fail intermittently under load — that's what the recheck button is for. Treat this tool as a fast triage pass that narrows down what to check by hand, not a final verdict.</p>
+    <p>All lookups run directly from your browser to Crossref, PubMed, Semantic Scholar, arXiv, and the bioRxiv/medRxiv APIs — nothing is sent anywhere else or stored.</p>
+    <p><b>Filtering and export:</b> click any count in the summary row to show only references in that category; click it again (or "show all") to clear the filter. Verified references can be reformatted into APA, MLA, Chicago, Harvard, or Vancouver style and exported as BibTeX or RIS. RIS is a shared, well-documented format that EndNote, Reference Manager, RefWorks, Zotero, and Mendeley all import directly — rather than three separate near-identical proprietary exports, one RIS file works across all of them. Formatting relies on whatever metadata the matched record provides (author list, year, journal, volume/issue/pages, DOI); fields the source didn't return are simply omitted, so it's worth a final check against your target style guide before submission.</p>
+  </details>
+
+  <footer class="colophon">
+    Cataloged by Anthony Onoja, Ph.D. · <a href="mailto:donmaston09@gmail.com">donmaston09@gmail.com</a>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const STOPWORDS = new Set(['the','a','an','of','and','in','on','for','to','with','study','analysis','review','effects','effect','using','from','into','part','among','between','case','approach','role','impact','via','new','based']);
+
+  function tokenize(str){
+    return (str.toLowerCase().match(/[a-z0-9]+/g) || []).filter(w => w.length > 2 && !STOPWORDS.has(w));
+  }
+
+  function overlapScore(rawRef, candidateTitle){
+    if (!candidateTitle) return 0;
+    const rawTokens = new Set(tokenize(rawRef));
+    const candTokens = tokenize(candidateTitle);
+    if (candTokens.length === 0) return 0;
+    let matched = 0;
+    for (const t of candTokens) if (rawTokens.has(t)) matched++;
+    return matched / candTokens.length;
+  }
+
+  function extractDOI(ref){
+    const m = ref.match(/10\.\d{4,9}\/[^\s"'<>,;)\]]+/);
+    return m ? m[0].replace(/[.,;]+$/,'') : null;
+  }
+
+  function extractYear(ref){
+    const m = ref.match(/\b(19|20)\d{2}\b/);
+    return m ? m[0] : null;
+  }
+
+  function parseAuthorName(raw){
+    if (!raw) return null;
+    const parts = raw.trim().replace(/\s+/g,' ').split(' ');
+    if (parts.length === 1) return { given: '', family: parts[0] };
+    const last = parts[parts.length - 1];
+    if (parts.length === 2 && /^[A-Z]{1,4}$/.test(last)){
+      // PubMed-style "Family INITIALS", e.g. "Zischke C"
+      return { family: parts[0], given: last.split('').join('. ') + '.' };
+    }
+    // "First Middle Last" order (Semantic Scholar / arXiv style)
+    return { given: parts.slice(0, -1).join(' '), family: last };
+  }
+
+  function splitReferences(raw){
+    const text = raw.trim();
+    if (!text) return [];
+    const numberedPattern = /^\s*(\[\d+\]|\(\d+\)|\d{1,3}\.)\s+/;
+    const lines = text.split(/\n/);
+    const numberedLines = lines.filter(l => numberedPattern.test(l));
+    if (numberedLines.length >= 2){
+      const entries = [];
+      let current = '';
+      for (const line of lines){
+        if (numberedPattern.test(line)){
+          if (current.trim()) entries.push(current.trim());
+          current = line.replace(numberedPattern, '');
+        } else {
+          current += ' ' + line.trim();
+        }
+      }
+      if (current.trim()) entries.push(current.trim());
+      return entries.map(e => e.trim()).filter(Boolean);
+    }
+    if (/\n\s*\n/.test(text)){
+      return text.split(/\n\s*\n/).map(s => s.replace(/\n/g,' ').trim()).filter(Boolean);
+    }
+    return lines.map(l => l.trim()).filter(Boolean);
+  }
+
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  async function fetchWithRetry(url, retries, backoff){
+    retries = retries === undefined ? 2 : retries;
+    backoff = backoff === undefined ? 700 : backoff;
+    let lastRes = null;
+    for (let attempt = 0; attempt <= retries; attempt++){
+      lastRes = await fetch(url);
+      if (lastRes.status === 429 && attempt < retries){
+        await sleep(backoff * (attempt + 1));
+        continue;
+      }
+      return lastRes;
+    }
+    return lastRes;
+  }
+
+  function cleanForPubMed(ref){
+    let s = ref;
+    s = s.replace(/10\.\d{4,9}\/[^\s"'<>,;)\]]+/g, ' ');
+    s = s.replace(/;\s*\d+[\d:().\-–]*\b/g, ' ');
+    s = s.replace(/\b\d{4}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{0,2}\b/gi, ' ');
+    s = s.replace(/\bvol(ume)?\.?\s*\d+\b/gi, ' ');
+    s = s.replace(/[();]/g, ' ');
+    s = s.replace(/\s{2,}/g, ' ').trim();
+    return s;
+  }
+
+  async function queryCrossrefDOI(doi){
+    const url = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const item = data.message;
+    if (!item) return null;
+    const authorsList = (item.author||[]).slice(0,12).map(a => ({ given: a.given||'', family: a.family||'' })).filter(a => a.family);
+    return {
+      source: 'Crossref (DOI)',
+      title: Array.isArray(item.title) ? item.title[0] : item.title,
+      year: item['published-print']?.['date-parts']?.[0]?.[0] || item['published-online']?.['date-parts']?.[0]?.[0],
+      authorsList,
+      authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
+      journal: Array.isArray(item['container-title']) ? item['container-title'][0] : item['container-title'],
+      volume: item.volume || null,
+      issue: item.issue || null,
+      pages: item.page || null,
+      doi: item.DOI,
+      url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : null),
+      doiMatch: true
+    };
+  }
+
+  async function queryCrossref(ref){
+    const url = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(ref)}&rows=4`;
+    const res = await fetchWithRetry(url);
+    if (!res.ok) throw new Error('Crossref ' + res.status);
+    const data = await res.json();
+    const items = (data.message && data.message.items) || [];
+    return items.map(item => {
+      const authorsList = (item.author||[]).slice(0,12).map(a => ({ given: a.given||'', family: a.family||'' })).filter(a => a.family);
+      return {
+        source: 'Crossref',
+        title: Array.isArray(item.title) ? item.title[0] : item.title,
+        year: item['published-print']?.['date-parts']?.[0]?.[0] || item['published-online']?.['date-parts']?.[0]?.[0],
+        authorsList,
+        authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
+        journal: Array.isArray(item['container-title']) ? item['container-title'][0] : item['container-title'],
+        volume: item.volume || null,
+        issue: item.issue || null,
+        pages: item.page || null,
+        doi: item.DOI,
+        url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : null)
+      };
+    });
+  }
+
+  async function querySemanticScholar(ref){
+    const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(ref)}&limit=5&fields=title,year,authors,externalIds,venue`;
+    const res = await fetchWithRetry(url);
+    if (!res.ok) throw new Error('Semantic Scholar ' + res.status);
+    const data = await res.json();
+    const items = data.data || [];
+    return items.map(item => {
+      const authorsList = (item.authors||[]).slice(0,12).map(a => parseAuthorName(a.name)).filter(Boolean);
+      return {
+        source: 'Semantic Scholar',
+        title: item.title,
+        year: item.year,
+        authorsList,
+        authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
+        journal: item.venue,
+        doi: item.externalIds && item.externalIds.DOI,
+        url: (item.externalIds && item.externalIds.DOI) ? `https://doi.org/${item.externalIds.DOI}` : (item.paperId ? `https://www.semanticscholar.org/paper/${item.paperId}` : null)
+      };
+    });
+  }
+
+  async function queryPubMed(ref){
+    const term = encodeURIComponent(cleanForPubMed(ref));
+    const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=4&term=${term}`;
+    const searchRes = await fetchWithRetry(searchUrl);
+    if (!searchRes.ok) throw new Error('PubMed search ' + searchRes.status);
+    const searchData = await searchRes.json();
+    const ids = (searchData.esearchresult && searchData.esearchresult.idlist) || [];
+    if (ids.length === 0) return [];
+    const summUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=${ids.join(',')}`;
+    const summRes = await fetchWithRetry(summUrl);
+    if (!summRes.ok) throw new Error('PubMed summary ' + summRes.status);
+    const summData = await summRes.json();
+    return ids.map(id => {
+      const item = summData.result && summData.result[id];
+      if (!item) return null;
+      const authorsList = (item.authors||[]).slice(0,12).map(a => parseAuthorName(a.name)).filter(Boolean);
+      return {
+        source: 'PubMed',
+        title: item.title,
+        year: ((item.pubdate||'').match(/\d{4}/) || [])[0],
+        authorsList,
+        authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
+        journal: item.fulljournalname || item.source,
+        volume: item.volume || null,
+        issue: item.issue || null,
+        pages: item.pages || null,
+        pmid: id,
+        url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`
+      };
+    }).filter(Boolean);
+  }
+
+  async function queryArxiv(ref){
+    const q = cleanForPubMed(ref);
+    const url = `https://export.arxiv.org/api/query?search_query=${encodeURIComponent('all:' + q)}&start=0&max_results=5`;
+    const res = await fetchWithRetry(url);
+    if (!res.ok) throw new Error('arXiv ' + res.status);
+    const text = await res.text();
+    const doc = new DOMParser().parseFromString(text, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) return [];
+    const entries = Array.from(doc.getElementsByTagName('entry'));
+    return entries.map(entry => {
+      const rawTitle = entry.getElementsByTagName('title')[0]?.textContent || '';
+      const title = rawTitle.replace(/\s+/g, ' ').trim();
+      const idUrl = entry.getElementsByTagName('id')[0]?.textContent || null;
+      const published = entry.getElementsByTagName('published')[0]?.textContent || '';
+      const year = (published.match(/^\d{4}/) || [])[0];
+      const authorsList = Array.from(entry.getElementsByTagName('author'))
+        .slice(0,12)
+        .map(a => parseAuthorName(a.getElementsByTagName('name')[0]?.textContent))
+        .filter(Boolean);
+      const authors = authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : '');
+      return { source: 'arXiv', title, year, authorsList, authors, journal: 'arXiv preprint', url: idUrl };
+    }).filter(c => c.title);
+  }
+
+  async function queryPreprintServer(doi){
+    for (const server of ['biorxiv', 'medrxiv']){
+      try{
+        const url = `https://api.biorxiv.org/details/${server}/${encodeURIComponent(doi)}`;
+        const res = await fetchWithRetry(url, 1, 500);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const item = data.collection && data.collection[0];
+        if (!item || !item.title) continue;
+        const authorsList = (item.authors || '').split(';').slice(0,12).map(s => {
+          const bits = s.trim().split(',');
+          return bits.length >= 2 ? { family: bits[0].trim(), given: bits[1].trim() } : { family: s.trim(), given: '' };
+        }).filter(a => a.family);
+        const authors = authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : '');
+        return {
+          source: server === 'biorxiv' ? 'bioRxiv' : 'medRxiv',
+          title: item.title,
+          year: (item.date || '').slice(0,4),
+          authorsList,
+          authors,
+          journal: server === 'biorxiv' ? 'bioRxiv preprint' : 'medRxiv preprint',
+          doi: item.doi,
+          url: `https://doi.org/${item.doi}`,
+          doiMatch: true
+        };
+      } catch(e){ /* try next server */ }
+    }
+    return null;
+  }
+
+  async function verifyReference(ref){
+    const doi = extractDOI(ref);
+    const results = [];
+
+    if (doi){
+      try{
+        const r = await queryCrossrefDOI(doi);
+        if (r) results.push({...r, score: 1});
+      } catch(e){ /* ignore, fall through to text search */ }
+
+      if (/^10\.1101\//.test(doi) && !results.some(r => r.doiMatch)){
+        try{
+          const r2 = await queryPreprintServer(doi);
+          if (r2) results.push({...r2, score: 1});
+        } catch(e){ /* ignore */ }
+      }
+    }
+
+    const providers = [
+      {fn: queryCrossref, name:'Crossref'},
+      {fn: querySemanticScholar, name:'Semantic Scholar'},
+      {fn: queryPubMed, name:'PubMed'},
+      {fn: queryArxiv, name:'arXiv'}
+    ];
+
+    const settled = await Promise.allSettled(providers.map(p => p.fn(ref)));
+    settled.forEach((res, i) => {
+      if (res.status === 'fulfilled'){
+        const candidates = res.value || [];
+        if (candidates.length === 0) return; // source reached fine, just no hits
+        let best = null, bestScore = -1;
+        for (const c of candidates){
+          const score = overlapScore(ref, c.title);
+          if (score > bestScore){ bestScore = score; best = c; }
+        }
+        if (best) results.push({...best, score: bestScore});
+      } else {
+        results.push({source: providers[i].name, error: true, message: String(res.reason && res.reason.message || res.reason)});
+      }
+    });
+
+    return { ref, doi, results };
+  }
+
+  function classify(results){
+    const doiHit = results.find(r => r.doiMatch);
+    if (doiHit) return { verdict:'verified', label:'DOI Confirmed', best: doiHit };
+    const errors = results.filter(r => r.error);
+    const valid = results.filter(r => !r.error && typeof r.score === 'number');
+    if (valid.length === 0){
+      if (errors.length >= 2) return { verdict:'checkfail', label:'Check Failed', best:null };
+      return { verdict:'notfound', label:'No Match Found', best:null };
+    }
+    const best = valid.reduce((a,b) => (b.score > a.score ? b : a));
+    if (best.score >= 0.75) return { verdict:'verified', label:'Verified', best };
+    if (best.score >= 0.4) return { verdict:'review', label:'Possible Match', best };
+    return { verdict:'notfound', label:'No Match Found', best };
+  }
+
+  // ---- Citation formatting (APA / MLA / Chicago / Harvard / Vancouver) ----
+
+  function tidyPunctuation(s){
+    return s.replace(/\s+/g,' ').replace(/\s+([.,;:])/g, '$1').replace(/\.{2,}/g,'.').replace(/,\s*\./g,'.').trim();
+  }
+
+  function initialsOf(given, style){
+    const letters = (given||'').split(/[\s.\-]+/).filter(Boolean).map(s => s[0].toUpperCase());
+    if (style === 'vancouver') return letters.join('');
+    return letters.map(l => l + '.').join(' ');
+  }
+
+  function authorNamePart(a, style){
+    const initials = initialsOf(a.given, style);
+    switch(style){
+      case 'mla':
+        return a.given ? `${a.family}, ${a.given}` : a.family;
+      case 'vancouver':
+        return initials ? `${a.family} ${initials}` : a.family;
+      default: // apa, harvard, chicago
+        return initials ? `${a.family}, ${initials}` : a.family;
+    }
+  }
+
+  function formatAuthors(authorsList, style){
+    if (!authorsList || authorsList.length === 0) return '';
+    const n = authorsList.length;
+    if (style === 'mla'){
+      if (n === 1) return authorNamePart(authorsList[0], style);
+      if (n === 2) return `${authorNamePart(authorsList[0], style)}, and ${authorsList[1].given ? authorsList[1].given + ' ' : ''}${authorsList[1].family}`;
+      return `${authorNamePart(authorsList[0], style)}, et al.`;
+    }
+    if (style === 'vancouver'){
+      const shown = authorsList.slice(0,6).map(a => authorNamePart(a, style));
+      return shown.join(', ') + (n > 6 ? ', et al.' : '');
+    }
+    const names = authorsList.map(a => authorNamePart(a, style));
+    if (n > 3) return `${names[0]}, et al.`;
+    if (n === 1) return names[0];
+    const joiner = style === 'apa' ? '&' : 'and';
+    return names.slice(0,-1).join(', ') + ` ${joiner} ` + names[n-1];
+  }
+
+  function formatCitation(rec, style){
+    const authors = formatAuthors(rec.authorsList, style) || '(author unknown)';
+    const year = rec.year || 'n.d.';
+    const title = rec.title || '';
+    const journal = rec.journal || '';
+    const vol = rec.volume || '';
+    const issue = rec.issue || '';
+    const pages = rec.pages || '';
+    const doiUrl = rec.doi ? `https://doi.org/${rec.doi}` : (rec.url || '');
+    const volIssue = vol ? `${vol}${issue ? '(' + issue + ')' : ''}` : '';
+
+    let out;
+    switch(style){
+      case 'apa':
+        out = `${authors} (${year}). ${title}. ${journal}${volIssue ? ', ' + volIssue : ''}${pages ? ', ' + pages : ''}.${doiUrl ? ' ' + doiUrl : ''}`;
+        break;
+      case 'mla':
+        out = `${authors}. "${title}." ${journal}${vol ? ', vol. ' + vol : ''}${issue ? ', no. ' + issue : ''}, ${year}${pages ? ', pp. ' + pages : ''}.${doiUrl ? ' ' + doiUrl + '.' : ''}`;
+        break;
+      case 'chicago':
+        out = `${authors}. ${year}. "${title}." ${journal} ${volIssue}${pages ? ': ' + pages : ''}.${doiUrl ? ' ' + doiUrl + '.' : ''}`;
+        break;
+      case 'harvard':
+        out = `${authors}, ${year}. ${title}. ${journal}, ${volIssue}${pages ? ', pp.' + pages : ''}.${doiUrl ? ' Available at: ' + doiUrl + '.' : ''}`;
+        break;
+      case 'vancouver':
+        out = `${authors}. ${title}. ${journal}. ${year}${volIssue ? ';' + volIssue : ''}${pages ? ':' + pages : ''}.`;
+        break;
+      default:
+        out = title;
+    }
+    return tidyPunctuation(out);
+  }
+
+  function bibtexKey(rec, idx){
+    const fam = (rec.authorsList && rec.authorsList[0] && rec.authorsList[0].family) || 'ref';
+    const base = (fam + (rec.year || '')).replace(/[^a-zA-Z0-9]/g, '');
+    return (base || 'ref') + idx;
+  }
+
+  function escapeBibtex(s){
+    return String(s || '').replace(/[{}]/g, '');
+  }
+
+  function toBibtexEntry(rec, idx){
+    const authorField = (rec.authorsList||[]).map(a => a.given ? `${a.family}, ${a.given}` : a.family).join(' and ');
+    const lines = [`@article{${bibtexKey(rec, idx)},`];
+    const push = (k, v) => { if (v) lines.push(`  ${k} = {${escapeBibtex(v)}},`); };
+    push('author', authorField);
+    push('title', rec.title);
+    push('journal', rec.journal);
+    push('year', rec.year);
+    push('volume', rec.volume);
+    push('number', rec.issue);
+    push('pages', rec.pages);
+    push('doi', rec.doi);
+    push('url', rec.url);
+    // remove trailing comma on the last field
+    if (lines.length > 1) lines[lines.length-1] = lines[lines.length-1].replace(/,$/,'');
+    lines.push('}');
+    return lines.join('\n');
+  }
+
+  function toRisEntry(rec){
+    const lines = ['TY  - JOUR'];
+    (rec.authorsList||[]).forEach(a => lines.push(`AU  - ${a.given ? a.family + ', ' + a.given : a.family}`));
+    if (rec.title) lines.push(`TI  - ${rec.title}`);
+    if (rec.journal) lines.push(`JO  - ${rec.journal}`);
+    if (rec.year) lines.push(`PY  - ${rec.year}`);
+    if (rec.volume) lines.push(`VL  - ${rec.volume}`);
+    if (rec.issue) lines.push(`IS  - ${rec.issue}`);
+    if (rec.pages){
+      const parts = String(rec.pages).split(/[-–]/);
+      lines.push(`SP  - ${parts[0].trim()}`);
+      if (parts[1]) lines.push(`EP  - ${parts[1].trim()}`);
+    }
+    if (rec.doi) lines.push(`DO  - ${rec.doi}`);
+    if (rec.url) lines.push(`UR  - ${rec.url}`);
+    lines.push('ER  - ');
+    return lines.join('\n');
+  }
+
+  function downloadFile(filename, content, mime){
+    try{
+      const blob = new Blob([content], { type: mime || 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      return true;
+    } catch(e){
+      return false;
+    }
+  }
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function tiltFor(i){
+    const vals = [-3, 2, -1.5, 3, -2.5, 1.5];
+    return vals[i % vals.length] + 'deg';
+  }
+
+  function renderCard(i, ref){
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.id = `card-${i}`;
+    el.dataset.verdict = 'pending';
+    el.style.setProperty('--tilt', tiltFor(i));
+    el.innerHTML = `
+      <div class="card-top">
+        <div class="card-index">No. ${String(i+1).padStart(3,'0')}</div>
+        <div class="stamp pending" id="stamp-${i}">Checking…</div>
+      </div>
+      <div class="ref-text">${escapeHtml(ref)}</div>
+      <div id="body-${i}"><div class="pending-text">Querying Crossref, PubMed, Semantic Scholar, and arXiv…</div></div>
+      <button class="retry-btn" id="retry-${i}" type="button">↻ Recheck this one</button>
+    `;
+    return el;
+  }
+
+  function updateCard(i, verification){
+    const stampEl = document.getElementById(`stamp-${i}`);
+    const bodyEl = document.getElementById(`body-${i}`);
+    const cardEl = document.getElementById(`card-${i}`);
+    const cls = classify(verification.results);
+    if (cardEl) cardEl.dataset.verdict = cls.verdict;
+
+    stampEl.classList.remove('pending');
+    stampEl.classList.add(cls.verdict, 'animate');
+    stampEl.textContent = cls.label;
+
+    let html = '';
+    const errors = verification.results.filter(r => r.error);
+
+    if (cls.best){
+      const b = cls.best;
+      html += '<div class="meta">';
+      if (b.title) html += `<div class="k">Title</div><div class="v">${escapeHtml(b.title)}</div>`;
+      if (b.authors) html += `<div class="k">Authors</div><div class="v">${escapeHtml(b.authors)}</div>`;
+      if (b.year) html += `<div class="k">Year</div><div class="v">${escapeHtml(b.year)}</div>`;
+      if (b.journal) html += `<div class="k">Venue</div><div class="v">${escapeHtml(b.journal)}</div>`;
+      html += `<div class="k">Source</div><div class="v">${escapeHtml(b.source)}${b.url ? ` — <a href="${escapeHtml(b.url)}" target="_blank" rel="noopener">view record</a>` : ''}</div>`;
+      html += '</div>';
+      if (typeof b.score === 'number'){
+        const pct = Math.round(b.score * 100);
+        html += `<div class="score-row"><div class="score-track"><div class="score-fill" style="width:${pct}%"></div></div><div class="score-label">${pct}% title match</div></div>`;
+      }
+    } else if (cls.verdict === 'checkfail'){
+      html += '<div class="pending-text">Couldn\'t reach enough sources to check this one just now (likely a rate limit or network hiccup) — this is not a verdict either way. Try rechecking.</div>';
+    } else {
+      html += '<div class="pending-text">No matching record found in Crossref, PubMed, Semantic Scholar, or arXiv. This does not confirm the reference is fabricated — it can also mean a very new paper, a non-English title, or a source these indexes under-cover. Worth a manual check before concluding anything.</div>';
+    }
+
+    if (errors.length){
+      html += `<div class="error-note">Unreachable: ${errors.map(e => escapeHtml(e.source)).join(', ')}</div>`;
+    }
+
+    bodyEl.innerHTML = html;
+
+    const retryBtn = document.getElementById(`retry-${i}`);
+    if (retryBtn) retryBtn.classList.add('show');
+  }
+
+  async function runWithConcurrency(items, worker, concurrency, onEach){
+    let idx = 0;
+    async function next(){
+      while (idx < items.length){
+        const i = idx++;
+        const result = await worker(items[i], i);
+        onEach(i, result);
+        await sleep(150);
+      }
+    }
+    const runners = Array.from({length: Math.min(concurrency, items.length)}, next);
+    await Promise.all(runners);
+  }
+
+  const refsInput = document.getElementById('refsInput');
+  const checkBtn = document.getElementById('checkBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const refCount = document.getElementById('refCount');
+  const emptyNote = document.getElementById('emptyNote');
+  const resultsEl = document.getElementById('results');
+  const summaryEl = document.getElementById('summary');
+  const cVerified = document.getElementById('cVerified');
+  const cReview = document.getElementById('cReview');
+  const cNotfound = document.getElementById('cNotfound');
+  const copyBtn = document.getElementById('copyBtn');
+  const filterClearEl = document.getElementById('filterClear');
+  const confirmedPanel = document.getElementById('confirmedPanel');
+  const styleTabsEl = document.getElementById('styleTabs');
+  const citationListEl = document.getElementById('citationList');
+  const copyCitationsBtn = document.getElementById('copyCitationsBtn');
+  const exportBibtexBtn = document.getElementById('exportBibtexBtn');
+  const exportRisBtn = document.getElementById('exportRisBtn');
+
+  let lastRun = [];
+  let currentRefs = [];
+  let activeFilter = null;
+  let currentStyle = 'apa';
+
+  function applyFilter(){
+    resultsEl.querySelectorAll('.card').forEach(card => {
+      const v = card.dataset.verdict;
+      let visible = true;
+      if (activeFilter){
+        visible = (activeFilter === 'notfound') ? (v === 'notfound' || v === 'checkfail') : (v === activeFilter);
+      }
+      card.style.display = visible ? '' : 'none';
+    });
+    document.querySelectorAll('.filter-item').forEach(el => el.classList.toggle('active', el.dataset.filter === activeFilter));
+    filterClearEl.classList.toggle('show', !!activeFilter);
+  }
+
+  function citationHtml(rec, style){
+    const text = formatCitation(rec, style);
+    const escaped = escapeHtml(text);
+    const doiUrl = rec.doi ? `https://doi.org/${rec.doi}` : rec.url;
+    if (doiUrl){
+      const escapedUrl = escapeHtml(doiUrl);
+      if (escaped.includes(escapedUrl)){
+        return escaped.replace(escapedUrl, `<a href="${escapedUrl}" target="_blank" rel="noopener">${escapedUrl}</a>`);
+      }
+    }
+    return escaped;
+  }
+
+  function getVerifiedRecords(){
+    return lastRun.filter(r => r && r.verdictKey === 'verified' && r.best).map(r => r.best);
+  }
+
+  function renderConfirmedPanel(){
+    const recs = getVerifiedRecords();
+    if (recs.length === 0){
+      confirmedPanel.classList.remove('show');
+      citationListEl.innerHTML = '';
+      return;
+    }
+    confirmedPanel.classList.add('show');
+    citationListEl.innerHTML = recs.map(rec => `<div class="citation-entry">${citationHtml(rec, currentStyle)}</div>`).join('');
+  }
+
+  function recomputeSummary(){
+    const counts = { verified: 0, review: 0, notfound: 0, checkfail: 0 };
+    lastRun.forEach(r => { if (r && counts[r.verdictKey] !== undefined) counts[r.verdictKey]++; });
+    cVerified.textContent = counts.verified;
+    cReview.textContent = counts.review;
+    cNotfound.textContent = counts.notfound + counts.checkfail;
+    applyFilter();
+    renderConfirmedPanel();
+  }
+
+  async function retryOne(i){
+    const ref = currentRefs[i];
+    if (!ref) return;
+    const stampEl = document.getElementById(`stamp-${i}`);
+    const bodyEl = document.getElementById(`body-${i}`);
+    const retryBtn = document.getElementById(`retry-${i}`);
+    stampEl.className = 'stamp pending';
+    stampEl.textContent = 'Checking…';
+    bodyEl.innerHTML = '<div class="pending-text">Re-querying Crossref, PubMed, Semantic Scholar, and arXiv…</div>';
+    if (retryBtn) retryBtn.classList.remove('show');
+    const verification = await verifyReference(ref);
+    updateCard(i, verification);
+    const cls = classify(verification.results);
+    lastRun[i] = { ref, verdictKey: cls.verdict, verdict: cls.label, best: cls.best };
+    recomputeSummary();
+  }
+
+  resultsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.retry-btn');
+    if (!btn) return;
+    const i = parseInt(btn.id.replace('retry-',''), 10);
+    retryOne(i);
+  });
+
+  summaryEl.addEventListener('click', (e) => {
+    const item = e.target.closest('.filter-item');
+    if (item){
+      const f = item.dataset.filter;
+      activeFilter = (activeFilter === f) ? null : f;
+      applyFilter();
+      return;
+    }
+    if (e.target.closest('#filterClear')){
+      activeFilter = null;
+      applyFilter();
+    }
+  });
+
+  styleTabsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.style-tab');
+    if (!btn) return;
+    currentStyle = btn.dataset.style;
+    styleTabsEl.querySelectorAll('.style-tab').forEach(b => b.classList.toggle('active', b === btn));
+    renderConfirmedPanel();
+  });
+
+  copyCitationsBtn.addEventListener('click', async () => {
+    const recs = getVerifiedRecords();
+    const text = recs.map(rec => formatCitation(rec, currentStyle)).join('\n\n');
+    try{
+      await navigator.clipboard.writeText(text);
+      copyCitationsBtn.textContent = 'Copied ✓';
+    } catch(e){
+      copyCitationsBtn.textContent = 'Copy failed';
+    }
+    setTimeout(() => copyCitationsBtn.textContent = 'Copy formatted list', 1500);
+  });
+
+  exportBibtexBtn.addEventListener('click', () => {
+    const recs = getVerifiedRecords();
+    const content = recs.map((rec, idx) => toBibtexEntry(rec, idx + 1)).join('\n\n');
+    const ok = downloadFile('confirmed-references.bib', content, 'application/x-bibtex');
+    if (!ok){
+      exportBibtexBtn.textContent = 'Download failed';
+      setTimeout(() => exportBibtexBtn.textContent = 'Download BibTeX (.bib)', 1800);
+    }
+  });
+
+  exportRisBtn.addEventListener('click', () => {
+    const recs = getVerifiedRecords();
+    const content = recs.map(rec => toRisEntry(rec)).join('\n\n');
+    const ok = downloadFile('confirmed-references.ris', content, 'application/x-research-info-systems');
+    if (!ok){
+      exportRisBtn.textContent = 'Download failed';
+      setTimeout(() => exportRisBtn.textContent = 'Download RIS — EndNote / RefMan / RefWorks (.ris)', 1800);
+    }
+  });
+
+  refsInput.addEventListener('input', () => {
+    const n = splitReferences(refsInput.value).length;
+    refCount.textContent = n ? `${n} reference${n === 1 ? '' : 's'} detected` : '';
+  });
+
+  clearBtn.addEventListener('click', () => {
+    refsInput.value = '';
+    refCount.textContent = '';
+    resultsEl.innerHTML = '';
+    summaryEl.classList.remove('show');
+    emptyNote.classList.remove('show');
+    lastRun = [];
+    currentRefs = [];
+    activeFilter = null;
+    applyFilter();
+    renderConfirmedPanel();
+  });
+
+  checkBtn.addEventListener('click', async () => {
+    const refs = splitReferences(refsInput.value);
+    emptyNote.classList.remove('show');
+    if (refs.length === 0){
+      emptyNote.classList.add('show');
+      return;
+    }
+
+    resultsEl.innerHTML = '';
+    summaryEl.classList.remove('show');
+    checkBtn.disabled = true;
+    checkBtn.textContent = 'Verifying…';
+    activeFilter = null;
+
+    currentRefs = refs;
+    refs.forEach((ref, i) => resultsEl.appendChild(renderCard(i, ref)));
+
+    lastRun = new Array(refs.length);
+    summaryEl.classList.add('show');
+    renderConfirmedPanel();
+
+    await runWithConcurrency(refs, verifyReference, 3, (i, verification) => {
+      updateCard(i, verification);
+      const cls = classify(verification.results);
+      lastRun[i] = { ref: refs[i], verdictKey: cls.verdict, verdict: cls.label, best: cls.best };
+      recomputeSummary();
+    });
+
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'File & Verify →';
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    const lines = lastRun.filter(Boolean).map((r, i) => {
+      let line = `${i+1}. [${r.verdict}] ${r.ref}`;
+      if (r.best && r.best.title){
+        line += `\n    → Matched: "${r.best.title}" (${r.best.source}${r.best.url ? ', ' + r.best.url : ''})`;
+      }
+      return line;
+    }).join('\n\n');
+    try{
+      await navigator.clipboard.writeText(lines);
+      copyBtn.textContent = 'Copied ✓';
+      setTimeout(() => copyBtn.textContent = 'Copy report', 1500);
+    } catch(e){
+      copyBtn.textContent = 'Copy failed';
+      setTimeout(() => copyBtn.textContent = 'Copy report', 1500);
+    }
+  });
+})();
+</script>
+</body>
+</html>
