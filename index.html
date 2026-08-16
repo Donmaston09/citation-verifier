@@ -2,1274 +2,958 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Citation Verifier</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Backread — listen while you work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
-:root{
-  --shell-bg: #1B222C;
-  --shell-bg-2: #232C38;
-  --paper-text: #EAE6D9;
-  --paper-text-dim: #9AA1AC;
-  --card-bg: #EEE6CE;
-  --card-bg-strip: #E4D8B5;
-  --ink: #24272B;
-  --ink-dim: #6B6455;
-  --rule: #C3B78F;
-  --verified: #2F6B4F;
-  --flagged: #A9691B;
-  --hallucinated: #A23B2E;
-  --neutral-stamp: #55606B;
-  --font-display: 'Roboto Slab', Rockwell, 'Rockwell Nova', ui-serif, Georgia, serif;
-  --font-body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
-}
-
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
-body{
-  background:
-    radial-gradient(ellipse at top, var(--shell-bg-2), var(--shell-bg) 60%);
-  color: var(--paper-text);
-  font-family: var(--font-body);
-  min-height:100vh;
-  padding: 32px 20px 80px;
-}
-
-.wrap{ max-width: 880px; margin: 0 auto; }
-
-header.masthead{
-  border-bottom: 2px solid #3A4453;
-  padding-bottom: 20px;
-  margin-bottom: 28px;
-}
-.eyebrow{
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #7C8AA0;
-  margin-bottom: 10px;
-}
-h1{
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(28px, 4vw, 40px);
-  margin: 0 0 8px;
-  letter-spacing: -0.01em;
-}
-.subtitle{
-  color: var(--paper-text-dim);
-  font-size: 14.5px;
-  line-height: 1.6;
-  max-width: 640px;
-}
-.subtitle b{ color: var(--paper-text); font-weight: 600; }
-
-.sources-row{
-  display:flex; gap:10px; flex-wrap:wrap; margin-top: 14px;
-}
-.source-chip{
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  border: 1px solid #3A4453;
-  border-radius: 3px;
-  padding: 4px 9px;
-  color: #B7C0CC;
-}
-
-/* Input card */
-.intake{
-  background: var(--card-bg);
-  border-radius: 4px;
-  padding: 22px 22px 18px;
-  position: relative;
-  box-shadow: 0 18px 40px -20px rgba(0,0,0,0.55);
-}
-.intake::before{
-  content:"";
-  position:absolute; inset:0;
-  border-radius:4px;
-  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 26px);
-  pointer-events:none;
-}
-.intake-label{
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  margin-bottom: 10px;
-  display:flex; justify-content:space-between; align-items:baseline;
-}
-textarea{
-  width:100%;
-  min-height: 160px;
-  resize: vertical;
-  background: transparent;
-  border: none;
-  border-top: 1px dashed var(--rule);
-  padding-top: 14px;
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  line-height: 1.7;
-  color: var(--ink);
-  outline:none;
-}
-textarea::placeholder{ color: #9C9576; }
-
-.intake-footer{
-  display:flex; align-items:center; justify-content: space-between;
-  margin-top: 14px; gap: 12px; flex-wrap: wrap;
-}
-.hint{ font-size: 12px; color: var(--ink-dim); max-width: 380px; line-height:1.5;}
-
-button.primary{
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: var(--ink);
-  color: var(--card-bg);
-  border: none;
-  padding: 12px 20px;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
-  white-space: nowrap;
-}
-button.primary:hover:not(:disabled){ background:#3a3227; }
-button.primary:active:not(:disabled){ transform: translateY(1px); }
-button.primary:disabled{ opacity:0.55; cursor: default; }
-
-button.ghost{
-  font-family: var(--font-mono);
-  font-size: 12px;
-  background: transparent;
-  border: 1px solid #3A4453;
-  color: #B7C0CC;
-  padding: 8px 14px;
-  border-radius: 2px;
-  cursor: pointer;
-}
-button.ghost:hover{ border-color:#5B6A80; color:#fff; }
-
-/* Summary strip */
-.summary{
-  display:none;
-  margin-top: 26px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  gap: 18px;
-  flex-wrap: wrap;
-  align-items:center;
-  color: #C7CDD6;
-}
-.summary.show{ display:flex; }
-.summary .count{ font-weight:600; }
-.summary .dot{ color: #4E596A; }
-.count.verified{ color:#7FBE9E; }
-.count.review{ color:#E3AC64; }
-.count.notfound{ color:#E38A7A; }
-
-.filter-item{
-  cursor: pointer;
-  padding: 3px 7px;
-  border-radius: 3px;
-  border: 1px solid transparent;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-.filter-item:hover{ background: rgba(255,255,255,0.06); }
-.filter-item.active{
-  background: rgba(255,255,255,0.09);
-  border-color: #4E596A;
-}
-.filter-clear{
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: #8E9DB3;
-  cursor: pointer;
-  text-decoration: underline;
-  display: none;
-}
-.filter-clear.show{ display: inline; }
-
-/* Confirmed bibliography panel */
-.confirmed-panel{
-  display: none;
-  margin-top: 28px;
-  background: var(--card-bg);
-  border-radius: 4px;
-  padding: 20px 22px 22px;
-  position: relative;
-  box-shadow: 0 14px 30px -18px rgba(0,0,0,0.5);
-}
-.confirmed-panel.show{ display: block; }
-.confirmed-panel::before{
-  content:"";
-  position:absolute; inset:0;
-  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 26px);
-  pointer-events:none;
-}
-.confirmed-head{
-  display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px;
-  margin-bottom: 14px;
-}
-.confirmed-title{
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-}
-.style-tabs{ display:flex; gap:6px; flex-wrap:wrap; }
-.style-tab{
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  background: transparent;
-  border: 1px solid var(--rule);
-  color: var(--ink-dim);
-  padding: 5px 10px;
-  border-radius: 2px;
-  cursor: pointer;
-}
-.style-tab:hover{ border-color: var(--ink-dim); color: var(--ink); }
-.style-tab.active{ background: var(--ink); color: var(--card-bg); border-color: var(--ink); }
-
-.citation-list{
-  border-top: 1px dashed var(--rule);
-  padding-top: 14px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.citation-entry{
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--ink);
-  padding-left: 22px;
-  text-indent: -22px;
-}
-.citation-entry a{ color: #2E5C8A; }
-
-.confirmed-footer{
-  display:flex; gap:10px; flex-wrap:wrap;
-  margin-top: 16px; padding-top: 14px;
-  border-top: 1px dashed var(--rule);
-}
-.confirmed-footer button{
-  font-family: var(--font-mono);
-  font-size: 12px;
-  background: transparent;
-  border: 1px solid var(--ink-dim);
-  color: var(--ink);
-  padding: 7px 12px;
-  border-radius: 2px;
-  cursor: pointer;
-}
-.confirmed-footer button:hover{ background: rgba(0,0,0,0.06); }
-.confirmed-empty{ font-size: 12.5px; color: var(--ink-dim); font-style: italic; }
-
-/* Results list */
-#results{ margin-top: 22px; display:flex; flex-direction:column; gap:18px; }
-
-.card{
-  background: var(--card-bg);
-  border-radius: 4px;
-  padding: 18px 20px 20px;
-  position: relative;
-  box-shadow: 0 14px 30px -18px rgba(0,0,0,0.5);
-  overflow:hidden;
-}
-.card::before{
-  content:"";
-  position:absolute; inset:0;
-  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 26px);
-  pointer-events:none;
-}
-.card-top{
-  display:flex; justify-content:space-between; align-items:flex-start; gap:14px;
-  margin-bottom: 10px;
-}
-.card-index{
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-dim);
-  letter-spacing: 0.08em;
-}
-.ref-text{
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--ink);
-  border-top: 1px dashed var(--rule);
-  padding-top: 10px;
-  margin-top: 2px;
-}
-
-/* stamp */
-.stamp{
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 5px 10px;
-  border: 2.5px solid currentColor;
-  border-radius: 3px;
-  white-space: nowrap;
-  transform: rotate(var(--tilt, -3deg));
-  opacity: 0.92;
-  flex-shrink: 0;
-}
-@media (prefers-reduced-motion: no-preference){
-  .stamp.animate{
-    animation: stampdown 0.28s cubic-bezier(.2,1.4,.5,1) both;
+  :root{
+    --ink:#15171A;
+    --panel:#1E2227;
+    --panel-2:#252A31;
+    --hairline:#33383F;
+    --brass:#C98A3E;
+    --brass-bright:#E0A758;
+    --teal:#4C8C86;
+    --paper:#EDEAE2;
+    --muted:#8B9198;
+    --danger:#C9634B;
+    --radius:10px;
   }
-}
-@keyframes stampdown{
-  0%{ transform: rotate(var(--tilt,-3deg)) scale(2.2); opacity:0; }
-  70%{ opacity: 1; }
-  100%{ transform: rotate(var(--tilt,-3deg)) scale(1); opacity:0.92; }
-}
-.stamp.pending{ color: var(--neutral-stamp); border-style: dashed; }
-.stamp.verified{ color: var(--verified); }
-.stamp.review{ color: var(--flagged); }
-.stamp.notfound{ color: var(--hallucinated); }
-.stamp.checkfail{ color: var(--neutral-stamp); border-style: dashed; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:960px;margin:0 auto;padding:28px 20px 80px;}
+  header.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:8px;}
+  header.top h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:28px;
+    letter-spacing:-0.01em;
+    margin:0;
+    color:var(--paper);
+  }
+  header.top .tag{color:var(--muted);font-size:13px;font-family:'IBM Plex Mono',monospace;}
 
-.retry-btn{
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  background: transparent;
-  border: 1px solid var(--rule);
-  color: var(--ink-dim);
-  padding: 3px 8px;
-  border-radius: 2px;
-  cursor: pointer;
-  margin-top: 8px;
-  display: none;
-}
-.retry-btn.show{ display: inline-block; }
-.retry-btn:hover{ border-color: var(--ink-dim); color: var(--ink); }
+  /* Uploader */
+  .uploader{
+    border:1.5px dashed var(--hairline);
+    border-radius:var(--radius);
+    padding:38px 20px;
+    text-align:center;
+    background:var(--panel);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .uploader.drag{border-color:var(--brass);background:var(--panel-2);}
+  .uploader h2{font-family:'Fraunces',serif;font-weight:500;font-size:19px;margin:0 0 6px;}
+  .uploader p{color:var(--muted);font-size:14px;margin:0 0 18px;line-height:1.5;}
+  .uploader input[type=file]{display:none;}
+  .pick-btn{
+    display:inline-block;
+    background:var(--brass);
+    color:#1A1206;
+    font-weight:600;
+    font-size:14px;
+    padding:10px 22px;
+    border-radius:999px;
+    cursor:pointer;
+    border:none;
+  }
+  .pick-btn:hover{background:var(--brass-bright);}
+  .formats{margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.03em;}
 
-.meta{
-  margin-top: 12px;
-  border-top: 1px dashed var(--rule);
-  padding-top: 12px;
-  font-size: 12.5px;
-  color: var(--ink);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 5px 10px;
-  align-items:baseline;
-}
-.meta .k{ font-family: var(--font-mono); font-size:10.5px; letter-spacing:0.07em; text-transform:uppercase; color: var(--ink-dim); }
-.meta .v a{ color: #2E5C8A; }
-.meta .v{ line-height:1.5; }
+  .status{margin-top:14px;font-size:13px;color:var(--teal);font-family:'IBM Plex Mono',monospace;min-height:18px;}
+  .status.err{color:var(--danger);}
 
-.score-row{
-  margin-top: 10px; display:flex; align-items:center; gap:8px;
-}
-.score-track{ flex:1; height:5px; background: rgba(0,0,0,0.12); border-radius:3px; overflow:hidden; }
-.score-fill{ height:100%; border-radius:3px; background: var(--ink); }
-.score-label{ font-family: var(--font-mono); font-size:11px; color: var(--ink-dim); white-space:nowrap; }
+  /* Workspace */
+  .workspace{display:grid;grid-template-columns:260px 1fr;gap:18px;margin-top:24px;}
+  @media (max-width:720px){ .workspace{grid-template-columns:1fr;} }
 
-.pending-text{ font-size:12.5px; color: var(--ink-dim); font-style: italic; margin-top:10px;}
-.error-note{ font-size: 11.5px; color: #8a5a4a; font-family: var(--font-mono); margin-top:8px; }
+  .card{background:var(--panel);border:1px solid var(--hairline);border-radius:var(--radius);}
 
-/* methodology */
-details.methodology{
-  margin-top: 34px;
-  border-top: 1px solid #3A4453;
-  padding-top: 16px;
-  color: #A8B0BC;
-  font-size: 13px;
-  line-height: 1.7;
-}
-details.methodology summary{
-  cursor:pointer; font-family: var(--font-mono); font-size:12px;
-  letter-spacing:0.06em; text-transform:uppercase; color:#B7C0CC;
-  margin-bottom: 10px;
-}
-details.methodology ul{ padding-left: 18px; margin: 8px 0; }
-details.methodology li{ margin-bottom: 6px; }
-details.methodology code{
-  font-family: var(--font-mono);
-  background: rgba(255,255,255,0.06);
-  padding: 1px 5px;
-  border-radius: 2px;
-  font-size: 12px;
-}
+  .chapters{padding:16px;max-height:640px;overflow-y:auto;}
+  .chapters .book-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;margin:0 0 2px;}
+  .chapters .book-meta{color:var(--muted);font-size:12px;margin:0 0 14px;font-family:'IBM Plex Mono',monospace;}
+  .chapters ul{list-style:none;margin:0;padding:0;}
+  .chapters li{
+    padding:9px 10px;
+    border-radius:7px;
+    font-size:13.5px;
+    color:var(--paper);
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    line-height:1.3;
+  }
+  .chapters li:hover{background:var(--panel-2);}
+  .chapters li.active{background:var(--brass);color:#1A1206;font-weight:600;}
+  .chapters li .n{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;flex-shrink:0;}
+  .chapters li.active .n{color:#1A1206cc;}
+  .chapters li.skipped{opacity:.4;text-decoration:line-through;}
 
-.empty-note{
-  color: var(--paper-text-dim); font-size:13px; margin-top:20px; display:none;
-}
-.empty-note.show{ display:block; }
+  .player{padding:22px;display:flex;flex-direction:column;align-items:center;gap:18px;}
 
-.colophon{
-  margin-top: 30px;
-  padding-top: 16px;
-  border-top: 1px dashed #3A4453;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  letter-spacing: 0.03em;
-  color: #6E7889;
-}
-.colophon a{ color: #8E9DB3; }
-.colophon a:hover{ color: #C7CDD6; }
+  /* Dial */
+  .dial-wrap{width:200px;height:200px;position:relative;}
+  .dial-wrap svg{width:100%;height:100%;}
+  .dial-center{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;
+  }
+  .dial-center .pct{font-family:'IBM Plex Mono',monospace;font-size:22px;color:var(--brass-bright);}
+  .dial-center .lbl{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
 
-@media (max-width: 560px){
-  .meta{ grid-template-columns: 1fr; }
-  .meta .k{ margin-top:6px; }
-  .card-top{ flex-direction:column; }
-}
+  .now-playing{text-align:center;max-width:440px;}
+  .now-playing .chap{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;}
+  .now-playing .sent{color:var(--muted);font-size:13px;line-height:1.5;min-height:38px;}
+
+  .transport{display:flex;align-items:center;gap:14px;}
+  .transport button{
+    background:var(--panel-2);
+    border:1px solid var(--hairline);
+    color:var(--paper);
+    width:44px;height:44px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-size:16px;
+  }
+  .transport button:hover{border-color:var(--brass);}
+  .transport button.play{
+    width:58px;height:58px;
+    background:var(--brass);
+    color:#1A1206;
+    border:none;
+    font-size:20px;
+  }
+  .transport button.play:hover{background:var(--brass-bright);}
+  .transport button:disabled{opacity:.35;cursor:default;}
+
+  .controls-row{width:100%;max-width:460px;display:flex;flex-direction:column;gap:12px;margin-top:4px;}
+  .ctrl{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;}
+  .ctrl label{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.03em;text-transform:uppercase;}
+  .ctrl select, .ctrl input[type=range]{accent-color:var(--brass);}
+  .ctrl select{
+    background:var(--panel-2);color:var(--paper);border:1px solid var(--hairline);
+    border-radius:6px;padding:5px 8px;font-size:12.5px;max-width:200px;
+  }
+  .toggle-row{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;font-size:12.5px;color:var(--muted);}
+  .toggle-row label{display:flex;align-items:center;gap:6px;cursor:pointer;}
+  .toggle-row input{accent-color:var(--teal);}
+
+  .hint{font-size:11px;color:var(--muted);text-align:center;max-width:420px;line-height:1.5;margin-top:4px;}
+  a.reset{color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;}
 </style>
 </head>
 <body>
-<div class="wrap">
-
-  <header class="masthead">
-    <div class="eyebrow">Reference Integrity Check</div>
-    <h1>Citation Verifier</h1>
-    <p class="subtitle">Paste a bibliography below. Each entry gets looked up against five live scholarly indexes and stamped <b>Verified</b>, <b>Possible Match</b>, or <b>No Match Found</b> based on how closely the returned record matches what was cited.</p>
-    <div class="sources-row">
-      <span class="source-chip">CROSSREF · all disciplines, DOI registry</span>
-      <span class="source-chip">PUBMED · biomedical literature</span>
-      <span class="source-chip">SEMANTIC SCHOLAR · multidisciplinary</span>
-      <span class="source-chip">ARXIV · physics, math, CS, stats preprints</span>
-      <span class="source-chip">BIORXIV / MEDRXIV · life-science &amp; health preprints (via DOI)</span>
-    </div>
+<div class="app">
+  <header class="top">
+    <h1>Backread</h1>
+    <span class="tag">read it to me while I work</span>
   </header>
 
-  <div class="intake">
-    <div class="intake-label">
-      <span>Bibliography intake</span>
-      <span id="refCount"></span>
-    </div>
-    <textarea id="refsInput" placeholder="Paste references here, one per line — or as a numbered list, e.g.
+  <div class="uploader card" id="uploader">
+    <h2>Drop a book in</h2>
+    <p>PDF, EPUB, Word (.docx), or plain text.<br>It'll be split into chapters, cleaned up, and read aloud on command.</p>
+    <label class="pick-btn" for="fileInput">Choose a file</label>
+    <input type="file" id="fileInput" accept=".pdf,.epub,.docx,.txt">
+    <div class="formats">PDF · EPUB · DOCX · TXT — processed entirely in your browser, nothing is uploaded anywhere</div>
+    <div class="status" id="status"></div>
+  </div>
 
-1. Smith J, Doe A. Effects of X on Y. Journal of Examples. 2021;12(3):45-59.
-2. Lee K. A totally fabricated study of nothing. Nature Fake Reviews. 2023.
-3. https://doi.org/10.1038/s41586-021-03819-2"></textarea>
-    <div class="intake-footer">
-      <div class="hint">Works best with full references (authors, title, year). One entry per line, or a numbered list — wrapped lines are merged automatically.</div>
-      <div style="display:flex; gap:10px;">
-        <button class="ghost" id="clearBtn" type="button">Clear</button>
-        <button class="primary" id="checkBtn" type="button">File &amp; Verify →</button>
+  <div class="workspace" id="workspace" hidden>
+    <div class="chapters card">
+      <p class="book-title" id="bookTitle">—</p>
+      <p class="book-meta" id="bookMeta">—</p>
+      <ul id="chapterList"></ul>
+      <div style="margin-top:12px;"><a class="reset" id="resetBtn">Load a different book</a></div>
+    </div>
+
+    <div class="player card">
+      <div class="dial-wrap">
+        <svg viewBox="0 0 200 200" id="dialSvg"></svg>
+        <div class="dial-center">
+          <div class="pct" id="dialPct">0%</div>
+          <div class="lbl">in chapter</div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <div class="empty-note" id="emptyNote">Paste at least one reference to begin.</div>
-
-  <div class="summary" id="summary">
-    <span class="filter-item" data-filter="verified"><span class="count verified" id="cVerified">0</span> verified</span>
-    <span class="dot">·</span>
-    <span class="filter-item" data-filter="review"><span class="count review" id="cReview">0</span> possible match</span>
-    <span class="dot">·</span>
-    <span class="filter-item" data-filter="notfound"><span class="count notfound" id="cNotfound">0</span> no match / check failed</span>
-    <span class="dot">·</span>
-    <span class="filter-clear" id="filterClear">show all</span>
-    <button class="ghost" id="copyBtn" type="button">Copy report</button>
-  </div>
-
-  <div id="results"></div>
-
-  <div class="confirmed-panel" id="confirmedPanel">
-    <div class="confirmed-head">
-      <div class="confirmed-title">Confirmed bibliography</div>
-      <div class="style-tabs" id="styleTabs">
-        <button class="style-tab active" data-style="apa" type="button">APA</button>
-        <button class="style-tab" data-style="mla" type="button">MLA</button>
-        <button class="style-tab" data-style="chicago" type="button">Chicago</button>
-        <button class="style-tab" data-style="harvard" type="button">Harvard</button>
-        <button class="style-tab" data-style="vancouver" type="button">Vancouver</button>
+      <div class="now-playing">
+        <p class="chap" id="npChapter">Pick a chapter to begin</p>
+        <p class="sent" id="npSentence"></p>
       </div>
-    </div>
-    <div class="citation-list" id="citationList"></div>
-    <div class="confirmed-footer">
-      <button class="ghost" id="copyCitationsBtn" type="button">Copy formatted list</button>
-      <button id="exportBibtexBtn" type="button">Download BibTeX (.bib)</button>
-      <button id="exportRisBtn" type="button">Download RIS — EndNote / RefMan / RefWorks (.ris)</button>
+
+      <div class="transport">
+        <button id="prevChapBtn" title="Previous chapter">⏮</button>
+        <button id="backBtn" title="Back one sentence">◀</button>
+        <button class="play" id="playBtn" title="Play / pause">▶</button>
+        <button id="fwdBtn" title="Forward one sentence">▶▶</button>
+        <button id="nextChapBtn" title="Next chapter">⏭</button>
+      </div>
+
+      <div class="controls-row">
+        <div class="ctrl">
+          <label>Speed</label>
+          <input type="range" id="rateSlider" min="0.6" max="2" step="0.05" value="1">
+          <span id="rateVal" style="font-family:'IBM Plex Mono',monospace;font-size:12px;width:36px;text-align:right;">1.0×</span>
+        </div>
+        <div class="ctrl">
+          <label>Accent</label>
+          <select id="accentSelect"></select>
+        </div>
+        <div class="ctrl">
+          <label>Voice</label>
+          <select id="genderSelect"></select>
+        </div>
+        <details id="advancedVoiceWrap" style="margin-top:-4px;">
+          <summary style="cursor:pointer;color:var(--muted);font-size:11.5px;font-family:'IBM Plex Mono',monospace;">Browse all voices on this device</summary>
+          <select id="voiceSelect" style="width:100%;margin-top:8px;"></select>
+        </details>
+        <div class="toggle-row">
+          <label><input type="checkbox" id="skipRefs" checked> Skip references / notes / index</label>
+          <label><input type="checkbox" id="skipFront" checked> Skip front matter</label>
+        </div>
+      </div>
+
+      <p class="hint">Tip: on a phone, use the lock-screen / headphone media controls to play, pause and skip — the OS keeps audio going even while the screen is off. On desktop this can keep reading in a background tab.</p>
+      <p class="hint" id="voiceQualityHint"></p>
     </div>
   </div>
 
-  <details class="methodology">
-    <summary>Methodology &amp; limitations</summary>
-    <p>Each reference is checked with a bibliographic search against Crossref and Semantic Scholar, a cleaned term search against PubMed, and a full-text search against arXiv (volume/page/date noise is stripped first for PubMed and arXiv, since raw citation punctuation can trip up their query parsers). Each source returns its top few candidates, not just its #1 ranked guess, and the tool scores every candidate's title against your pasted text — this catches cases where the right paper wasn't ranked first. If a DOI is present in the pasted text, it's confirmed directly against Crossref's registry first and treated as authoritative; DOIs with the <code>10.1101/</code> prefix are also confirmed directly against the bioRxiv and medRxiv preprint APIs.</p>
-    <ul>
-      <li><b>Verified</b> — DOI confirmed (including via bioRxiv/medRxiv), or ≥75% word overlap with a real indexed record.</li>
-      <li><b>Possible match</b> — 40–75% overlap. Worth a manual glance; could be a paraphrased title, a preprint vs. published version, or a partial citation.</li>
-      <li><b>No match / check failed</b> — either no record cleared 40% overlap in any of the four searchable indexes, or at least two of them couldn't be reached (network issue or rate limit) — both are folded into one neutral count so an unreachable API is never confused with a real non-match. Each card says which case it is, and has a recheck button.</li>
-    </ul>
-    <p><b>Google Scholar isn't included</b> — it has no public API, and scraping it violates its terms of service and gets blocked by CAPTCHA in practice. <b>bioRxiv/medRxiv's own search isn't included either</b>, for a related reason: their public API only supports direct DOI lookups, not free-text search, so bioRxiv/medRxiv coverage here is DOI-only. Crossref, PubMed, Semantic Scholar, and arXiv together cover the large majority of what Scholar indexes for genuinely published or preprinted work, and return structured metadata rather than scraped HTML, which is what makes this kind of automated check possible at all.</p>
-    <p><b>A "no match" is a signal to check by hand, never proof of fabrication.</b> Very new papers, non-English titles, book chapters, conference proceedings, and paywalled or niche sources can all be under-indexed or absent from these databases even when they're completely real. Semantic Scholar's free public API in particular has a low, shared rate limit and can fail intermittently under load — that's what the recheck button is for. Treat this tool as a fast triage pass that narrows down what to check by hand, not a final verdict.</p>
-    <p>All lookups run directly from your browser to Crossref, PubMed, Semantic Scholar, arXiv, and the bioRxiv/medRxiv APIs — nothing is sent anywhere else or stored.</p>
-    <p><b>Filtering and export:</b> click any count in the summary row to show only references in that category; click it again (or "show all") to clear the filter. Verified references can be reformatted into APA, MLA, Chicago, Harvard, or Vancouver style and exported as BibTeX or RIS. RIS is a shared, well-documented format that EndNote, Reference Manager, RefWorks, Zotero, and Mendeley all import directly — rather than three separate near-identical proprietary exports, one RIS file works across all of them. Formatting relies on whatever metadata the matched record provides (author list, year, journal, volume/issue/pages, DOI); fields the source didn't return are simply omitted, so it's worth a final check against your target style guide before submission.</p>
-  </details>
-
-  <footer class="colophon">
-    Cataloged by Anthony Onoja, Ph.D. · <a href="mailto:donmaston09@gmail.com">donmaston09@gmail.com</a>
+  <footer style="text-align:center;margin-top:30px;color:var(--muted);font-size:11.5px;font-family:'IBM Plex Mono',monospace;">
+    Built by Tony Onoja, Ph.D. — School of Health Sciences, University of Surrey
   </footer>
-
 </div>
 
 <script>
 (function(){
-  const STOPWORDS = new Set(['the','a','an','of','and','in','on','for','to','with','study','analysis','review','effects','effect','using','from','into','part','among','between','case','approach','role','impact','via','new','based']);
+  "use strict";
 
-  function tokenize(str){
-    return (str.toLowerCase().match(/[a-z0-9]+/g) || []).filter(w => w.length > 2 && !STOPWORDS.has(w));
+  // ---------- State ----------
+  let book = null; // {title, chapters:[{title, sentences:[...], skip:false}]}
+  let curChapter = 0, curSentence = 0;
+  let isPlaying = false;
+  let voices = [];
+  let bookKey = null;
+
+  const el = id => document.getElementById(id);
+  const statusEl = el('status');
+
+  function setStatus(msg, isErr){
+    statusEl.textContent = msg || '';
+    statusEl.className = 'status' + (isErr ? ' err' : '');
   }
 
-  function overlapScore(rawRef, candidateTitle){
-    if (!candidateTitle) return 0;
-    const rawTokens = new Set(tokenize(rawRef));
-    const candTokens = tokenize(candidateTitle);
-    if (candTokens.length === 0) return 0;
-    let matched = 0;
-    for (const t of candTokens) if (rawTokens.has(t)) matched++;
-    return matched / candTokens.length;
+  // ---------- Storage helpers (best-effort, non-fatal) ----------
+  async function saveState(){
+    try{
+      if(!window.storage || !bookKey) return;
+      await window.storage.set('pos:'+bookKey, JSON.stringify({curChapter, curSentence}));
+      await window.storage.set('prefs', JSON.stringify({
+        rate: parseFloat(rateSlider.value),
+        voiceName: voiceSelect.value,
+        skipRefs: skipRefs.checked,
+        skipFront: skipFront.checked
+      }));
+    }catch(e){ /* non-fatal */ }
   }
-
-  function extractDOI(ref){
-    const m = ref.match(/10\.\d{4,9}\/[^\s"'<>,;)\]]+/);
-    return m ? m[0].replace(/[.,;]+$/,'') : null;
-  }
-
-  function extractYear(ref){
-    const m = ref.match(/\b(19|20)\d{2}\b/);
-    return m ? m[0] : null;
-  }
-
-  function parseAuthorName(raw){
-    if (!raw) return null;
-    const parts = raw.trim().replace(/\s+/g,' ').split(' ');
-    if (parts.length === 1) return { given: '', family: parts[0] };
-    const last = parts[parts.length - 1];
-    if (parts.length === 2 && /^[A-Z]{1,4}$/.test(last)){
-      // PubMed-style "Family INITIALS", e.g. "Zischke C"
-      return { family: parts[0], given: last.split('').join('. ') + '.' };
-    }
-    // "First Middle Last" order (Semantic Scholar / arXiv style)
-    return { given: parts.slice(0, -1).join(' '), family: last };
-  }
-
-  function splitReferences(raw){
-    const text = raw.trim();
-    if (!text) return [];
-    const numberedPattern = /^\s*(\[\d+\]|\(\d+\)|\d{1,3}\.)\s+/;
-    const lines = text.split(/\n/);
-    const numberedLines = lines.filter(l => numberedPattern.test(l));
-    if (numberedLines.length >= 2){
-      const entries = [];
-      let current = '';
-      for (const line of lines){
-        if (numberedPattern.test(line)){
-          if (current.trim()) entries.push(current.trim());
-          current = line.replace(numberedPattern, '');
-        } else {
-          current += ' ' + line.trim();
-        }
+  async function loadPrefs(){
+    try{
+      if(!window.storage) return;
+      const r = await window.storage.get('prefs');
+      if(r && r.value){
+        const p = JSON.parse(r.value);
+        if(p.rate){ rateSlider.value = p.rate; rateVal.textContent = p.rate.toFixed(2)+'×'; }
+        if(typeof p.skipRefs === 'boolean') skipRefs.checked = p.skipRefs;
+        if(typeof p.skipFront === 'boolean') skipFront.checked = p.skipFront;
+        window.__preferredVoiceName = p.voiceName;
       }
-      if (current.trim()) entries.push(current.trim());
-      return entries.map(e => e.trim()).filter(Boolean);
-    }
-    if (/\n\s*\n/.test(text)){
-      return text.split(/\n\s*\n/).map(s => s.replace(/\n/g,' ').trim()).filter(Boolean);
-    }
-    return lines.map(l => l.trim()).filter(Boolean);
+    }catch(e){}
   }
-
-  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-
-  async function fetchWithRetry(url, retries, backoff){
-    retries = retries === undefined ? 2 : retries;
-    backoff = backoff === undefined ? 700 : backoff;
-    let lastRes = null;
-    for (let attempt = 0; attempt <= retries; attempt++){
-      lastRes = await fetch(url);
-      if (lastRes.status === 429 && attempt < retries){
-        await sleep(backoff * (attempt + 1));
-        continue;
-      }
-      return lastRes;
-    }
-    return lastRes;
-  }
-
-  function cleanForPubMed(ref){
-    let s = ref;
-    s = s.replace(/10\.\d{4,9}\/[^\s"'<>,;)\]]+/g, ' ');
-    s = s.replace(/;\s*\d+[\d:().\-–]*\b/g, ' ');
-    s = s.replace(/\b\d{4}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{0,2}\b/gi, ' ');
-    s = s.replace(/\bvol(ume)?\.?\s*\d+\b/gi, ' ');
-    s = s.replace(/[();]/g, ' ');
-    s = s.replace(/\s{2,}/g, ' ').trim();
-    return s;
-  }
-
-  async function queryCrossrefDOI(doi){
-    const url = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const item = data.message;
-    if (!item) return null;
-    const authorsList = (item.author||[]).slice(0,12).map(a => ({ given: a.given||'', family: a.family||'' })).filter(a => a.family);
-    return {
-      source: 'Crossref (DOI)',
-      title: Array.isArray(item.title) ? item.title[0] : item.title,
-      year: item['published-print']?.['date-parts']?.[0]?.[0] || item['published-online']?.['date-parts']?.[0]?.[0],
-      authorsList,
-      authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
-      journal: Array.isArray(item['container-title']) ? item['container-title'][0] : item['container-title'],
-      volume: item.volume || null,
-      issue: item.issue || null,
-      pages: item.page || null,
-      doi: item.DOI,
-      url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : null),
-      doiMatch: true
-    };
-  }
-
-  async function queryCrossref(ref){
-    const url = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(ref)}&rows=4`;
-    const res = await fetchWithRetry(url);
-    if (!res.ok) throw new Error('Crossref ' + res.status);
-    const data = await res.json();
-    const items = (data.message && data.message.items) || [];
-    return items.map(item => {
-      const authorsList = (item.author||[]).slice(0,12).map(a => ({ given: a.given||'', family: a.family||'' })).filter(a => a.family);
-      return {
-        source: 'Crossref',
-        title: Array.isArray(item.title) ? item.title[0] : item.title,
-        year: item['published-print']?.['date-parts']?.[0]?.[0] || item['published-online']?.['date-parts']?.[0]?.[0],
-        authorsList,
-        authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
-        journal: Array.isArray(item['container-title']) ? item['container-title'][0] : item['container-title'],
-        volume: item.volume || null,
-        issue: item.issue || null,
-        pages: item.page || null,
-        doi: item.DOI,
-        url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : null)
-      };
-    });
-  }
-
-  async function querySemanticScholar(ref){
-    const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(ref)}&limit=5&fields=title,year,authors,externalIds,venue`;
-    const res = await fetchWithRetry(url);
-    if (!res.ok) throw new Error('Semantic Scholar ' + res.status);
-    const data = await res.json();
-    const items = data.data || [];
-    return items.map(item => {
-      const authorsList = (item.authors||[]).slice(0,12).map(a => parseAuthorName(a.name)).filter(Boolean);
-      return {
-        source: 'Semantic Scholar',
-        title: item.title,
-        year: item.year,
-        authorsList,
-        authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
-        journal: item.venue,
-        doi: item.externalIds && item.externalIds.DOI,
-        url: (item.externalIds && item.externalIds.DOI) ? `https://doi.org/${item.externalIds.DOI}` : (item.paperId ? `https://www.semanticscholar.org/paper/${item.paperId}` : null)
-      };
-    });
-  }
-
-  async function queryPubMed(ref){
-    const term = encodeURIComponent(cleanForPubMed(ref));
-    const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=4&term=${term}`;
-    const searchRes = await fetchWithRetry(searchUrl);
-    if (!searchRes.ok) throw new Error('PubMed search ' + searchRes.status);
-    const searchData = await searchRes.json();
-    const ids = (searchData.esearchresult && searchData.esearchresult.idlist) || [];
-    if (ids.length === 0) return [];
-    const summUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=${ids.join(',')}`;
-    const summRes = await fetchWithRetry(summUrl);
-    if (!summRes.ok) throw new Error('PubMed summary ' + summRes.status);
-    const summData = await summRes.json();
-    return ids.map(id => {
-      const item = summData.result && summData.result[id];
-      if (!item) return null;
-      const authorsList = (item.authors||[]).slice(0,12).map(a => parseAuthorName(a.name)).filter(Boolean);
-      return {
-        source: 'PubMed',
-        title: item.title,
-        year: ((item.pubdate||'').match(/\d{4}/) || [])[0],
-        authorsList,
-        authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
-        journal: item.fulljournalname || item.source,
-        volume: item.volume || null,
-        issue: item.issue || null,
-        pages: item.pages || null,
-        pmid: id,
-        url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`
-      };
-    }).filter(Boolean);
-  }
-
-  async function queryArxiv(ref){
-    const q = cleanForPubMed(ref);
-    const url = `https://export.arxiv.org/api/query?search_query=${encodeURIComponent('all:' + q)}&start=0&max_results=5`;
-    const res = await fetchWithRetry(url);
-    if (!res.ok) throw new Error('arXiv ' + res.status);
-    const text = await res.text();
-    const doc = new DOMParser().parseFromString(text, 'application/xml');
-    if (doc.getElementsByTagName('parsererror').length) return [];
-    const entries = Array.from(doc.getElementsByTagName('entry'));
-    return entries.map(entry => {
-      const rawTitle = entry.getElementsByTagName('title')[0]?.textContent || '';
-      const title = rawTitle.replace(/\s+/g, ' ').trim();
-      const idUrl = entry.getElementsByTagName('id')[0]?.textContent || null;
-      const published = entry.getElementsByTagName('published')[0]?.textContent || '';
-      const year = (published.match(/^\d{4}/) || [])[0];
-      const authorsList = Array.from(entry.getElementsByTagName('author'))
-        .slice(0,12)
-        .map(a => parseAuthorName(a.getElementsByTagName('name')[0]?.textContent))
-        .filter(Boolean);
-      const authors = authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : '');
-      return { source: 'arXiv', title, year, authorsList, authors, journal: 'arXiv preprint', url: idUrl };
-    }).filter(c => c.title);
-  }
-
-  async function queryPreprintServer(doi){
-    for (const server of ['biorxiv', 'medrxiv']){
-      try{
-        const url = `https://api.biorxiv.org/details/${server}/${encodeURIComponent(doi)}`;
-        const res = await fetchWithRetry(url, 1, 500);
-        if (!res.ok) continue;
-        const data = await res.json();
-        const item = data.collection && data.collection[0];
-        if (!item || !item.title) continue;
-        const authorsList = (item.authors || '').split(';').slice(0,12).map(s => {
-          const bits = s.trim().split(',');
-          return bits.length >= 2 ? { family: bits[0].trim(), given: bits[1].trim() } : { family: s.trim(), given: '' };
-        }).filter(a => a.family);
-        const authors = authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : '');
-        return {
-          source: server === 'biorxiv' ? 'bioRxiv' : 'medRxiv',
-          title: item.title,
-          year: (item.date || '').slice(0,4),
-          authorsList,
-          authors,
-          journal: server === 'biorxiv' ? 'bioRxiv preprint' : 'medRxiv preprint',
-          doi: item.doi,
-          url: `https://doi.org/${item.doi}`,
-          doiMatch: true
-        };
-      } catch(e){ /* try next server */ }
-    }
+  async function loadPosition(key){
+    try{
+      if(!window.storage) return null;
+      const r = await window.storage.get('pos:'+key);
+      if(r && r.value) return JSON.parse(r.value);
+    }catch(e){}
     return null;
   }
 
-  async function verifyReference(ref){
-    const doi = extractDOI(ref);
-    const results = [];
-
-    if (doi){
-      try{
-        const r = await queryCrossrefDOI(doi);
-        if (r) results.push({...r, score: 1});
-      } catch(e){ /* ignore, fall through to text search */ }
-
-      if (/^10\.1101\//.test(doi) && !results.some(r => r.doiMatch)){
-        try{
-          const r2 = await queryPreprintServer(doi);
-          if (r2) results.push({...r2, score: 1});
-        } catch(e){ /* ignore */ }
-      }
-    }
-
-    const providers = [
-      {fn: queryCrossref, name:'Crossref'},
-      {fn: querySemanticScholar, name:'Semantic Scholar'},
-      {fn: queryPubMed, name:'PubMed'},
-      {fn: queryArxiv, name:'arXiv'}
-    ];
-
-    const settled = await Promise.allSettled(providers.map(p => p.fn(ref)));
-    settled.forEach((res, i) => {
-      if (res.status === 'fulfilled'){
-        const candidates = res.value || [];
-        if (candidates.length === 0) return; // source reached fine, just no hits
-        let best = null, bestScore = -1;
-        for (const c of candidates){
-          const score = overlapScore(ref, c.title);
-          if (score > bestScore){ bestScore = score; best = c; }
+  // ---------- Text utilities ----------
+  function splitSentences(text){
+    // Normalize whitespace first
+    text = text.replace(/\r/g,'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+    if(!text) return [];
+    // Split on sentence enders, keep punctuation
+    const rough = text.match(/[^.!?\n]+[.!?]+(\s+|$)|[^.!?\n]+\n|[^.!?\n]+$/g) || [text];
+    const out = [];
+    for(let s of rough){
+      s = s.trim();
+      if(!s) continue;
+      // further split very long sentences so mobile TTS doesn't choke
+      if(s.length > 260){
+        const parts = s.split(/(?<=[,;:])\s+/);
+        let buf = '';
+        for(const p of parts){
+          if((buf+' '+p).length > 260 && buf){ out.push(buf.trim()); buf = p; }
+          else buf = buf ? buf+' '+p : p;
         }
-        if (best) results.push({...best, score: bestScore});
+        if(buf) out.push(buf.trim());
       } else {
-        results.push({source: providers[i].name, error: true, message: String(res.reason && res.reason.message || res.reason)});
+        out.push(s);
       }
-    });
-
-    return { ref, doi, results };
-  }
-
-  function classify(results){
-    const doiHit = results.find(r => r.doiMatch);
-    if (doiHit) return { verdict:'verified', label:'DOI Confirmed', best: doiHit };
-    const errors = results.filter(r => r.error);
-    const valid = results.filter(r => !r.error && typeof r.score === 'number');
-    if (valid.length === 0){
-      if (errors.length >= 2) return { verdict:'checkfail', label:'Check Failed', best:null };
-      return { verdict:'notfound', label:'No Match Found', best:null };
     }
-    const best = valid.reduce((a,b) => (b.score > a.score ? b : a));
-    if (best.score >= 0.75) return { verdict:'verified', label:'Verified', best };
-    if (best.score >= 0.4) return { verdict:'review', label:'Possible Match', best };
-    return { verdict:'notfound', label:'No Match Found', best };
+    return out.filter(s => s.length > 0);
   }
 
-  // ---- Citation formatting (APA / MLA / Chicago / Harvard / Vancouver) ----
+  const BOILERPLATE_HEADINGS = /^(references|bibliography|notes|endnotes|footnotes|acknowledg(e)?ments|index|about the author|colophon|further reading)\s*$/i;
+  const FRONTMATTER_TITLES = /^(cover|title page|copyright|dedication|table of contents|contents|half title|also by|praise for|epigraph)\s*$/i;
 
-  function tidyPunctuation(s){
-    return s.replace(/\s+/g,' ').replace(/\s+([.,;:])/g, '$1').replace(/\.{2,}/g,'.').replace(/,\s*\./g,'.').trim();
-  }
-
-  function initialsOf(given, style){
-    const letters = (given||'').split(/[\s.\-]+/).filter(Boolean).map(s => s[0].toUpperCase());
-    if (style === 'vancouver') return letters.join('');
-    return letters.map(l => l + '.').join(' ');
-  }
-
-  function authorNamePart(a, style){
-    const initials = initialsOf(a.given, style);
-    switch(style){
-      case 'mla':
-        return a.given ? `${a.family}, ${a.given}` : a.family;
-      case 'vancouver':
-        return initials ? `${a.family} ${initials}` : a.family;
-      default: // apa, harvard, chicago
-        return initials ? `${a.family}, ${initials}` : a.family;
+  function stripBoilerplateSection(text){
+    // If a "References"/"Notes"/etc heading appears, cut everything from there to the end of the chapter.
+    const lines = text.split('\n');
+    let cutAt = -1;
+    for(let i=0;i<lines.length;i++){
+      const line = lines[i].trim();
+      if(line.length < 40 && BOILERPLATE_HEADINGS.test(line)){ cutAt = i; break; }
     }
+    if(cutAt >= 0) return lines.slice(0, cutAt).join('\n');
+    return text;
   }
 
-  function formatAuthors(authorsList, style){
-    if (!authorsList || authorsList.length === 0) return '';
-    const n = authorsList.length;
-    if (style === 'mla'){
-      if (n === 1) return authorNamePart(authorsList[0], style);
-      if (n === 2) return `${authorNamePart(authorsList[0], style)}, and ${authorsList[1].given ? authorsList[1].given + ' ' : ''}${authorsList[1].family}`;
-      return `${authorNamePart(authorsList[0], style)}, et al.`;
-    }
-    if (style === 'vancouver'){
-      const shown = authorsList.slice(0,6).map(a => authorNamePart(a, style));
-      return shown.join(', ') + (n > 6 ? ', et al.' : '');
-    }
-    const names = authorsList.map(a => authorNamePart(a, style));
-    if (n > 3) return `${names[0]}, et al.`;
-    if (n === 1) return names[0];
-    const joiner = style === 'apa' ? '&' : 'and';
-    return names.slice(0,-1).join(', ') + ` ${joiner} ` + names[n-1];
-  }
-
-  function formatCitation(rec, style){
-    const authors = formatAuthors(rec.authorsList, style) || '(author unknown)';
-    const year = rec.year || 'n.d.';
-    const title = rec.title || '';
-    const journal = rec.journal || '';
-    const vol = rec.volume || '';
-    const issue = rec.issue || '';
-    const pages = rec.pages || '';
-    const doiUrl = rec.doi ? `https://doi.org/${rec.doi}` : (rec.url || '');
-    const volIssue = vol ? `${vol}${issue ? '(' + issue + ')' : ''}` : '';
-
-    let out;
-    switch(style){
-      case 'apa':
-        out = `${authors} (${year}). ${title}. ${journal}${volIssue ? ', ' + volIssue : ''}${pages ? ', ' + pages : ''}.${doiUrl ? ' ' + doiUrl : ''}`;
-        break;
-      case 'mla':
-        out = `${authors}. "${title}." ${journal}${vol ? ', vol. ' + vol : ''}${issue ? ', no. ' + issue : ''}, ${year}${pages ? ', pp. ' + pages : ''}.${doiUrl ? ' ' + doiUrl + '.' : ''}`;
-        break;
-      case 'chicago':
-        out = `${authors}. ${year}. "${title}." ${journal} ${volIssue}${pages ? ': ' + pages : ''}.${doiUrl ? ' ' + doiUrl + '.' : ''}`;
-        break;
-      case 'harvard':
-        out = `${authors}, ${year}. ${title}. ${journal}, ${volIssue}${pages ? ', pp.' + pages : ''}.${doiUrl ? ' Available at: ' + doiUrl + '.' : ''}`;
-        break;
-      case 'vancouver':
-        out = `${authors}. ${title}. ${journal}. ${year}${volIssue ? ';' + volIssue : ''}${pages ? ':' + pages : ''}.`;
-        break;
-      default:
-        out = title;
-    }
-    return tidyPunctuation(out);
-  }
-
-  function bibtexKey(rec, idx){
-    const fam = (rec.authorsList && rec.authorsList[0] && rec.authorsList[0].family) || 'ref';
-    const base = (fam + (rec.year || '')).replace(/[^a-zA-Z0-9]/g, '');
-    return (base || 'ref') + idx;
-  }
-
-  function escapeBibtex(s){
-    return String(s || '').replace(/[{}]/g, '');
-  }
-
-  function toBibtexEntry(rec, idx){
-    const authorField = (rec.authorsList||[]).map(a => a.given ? `${a.family}, ${a.given}` : a.family).join(' and ');
-    const lines = [`@article{${bibtexKey(rec, idx)},`];
-    const push = (k, v) => { if (v) lines.push(`  ${k} = {${escapeBibtex(v)}},`); };
-    push('author', authorField);
-    push('title', rec.title);
-    push('journal', rec.journal);
-    push('year', rec.year);
-    push('volume', rec.volume);
-    push('number', rec.issue);
-    push('pages', rec.pages);
-    push('doi', rec.doi);
-    push('url', rec.url);
-    // remove trailing comma on the last field
-    if (lines.length > 1) lines[lines.length-1] = lines[lines.length-1].replace(/,$/,'');
-    lines.push('}');
-    return lines.join('\n');
-  }
-
-  function toRisEntry(rec){
-    const lines = ['TY  - JOUR'];
-    (rec.authorsList||[]).forEach(a => lines.push(`AU  - ${a.given ? a.family + ', ' + a.given : a.family}`));
-    if (rec.title) lines.push(`TI  - ${rec.title}`);
-    if (rec.journal) lines.push(`JO  - ${rec.journal}`);
-    if (rec.year) lines.push(`PY  - ${rec.year}`);
-    if (rec.volume) lines.push(`VL  - ${rec.volume}`);
-    if (rec.issue) lines.push(`IS  - ${rec.issue}`);
-    if (rec.pages){
-      const parts = String(rec.pages).split(/[-–]/);
-      lines.push(`SP  - ${parts[0].trim()}`);
-      if (parts[1]) lines.push(`EP  - ${parts[1].trim()}`);
-    }
-    if (rec.doi) lines.push(`DO  - ${rec.doi}`);
-    if (rec.url) lines.push(`UR  - ${rec.url}`);
-    lines.push('ER  - ');
-    return lines.join('\n');
-  }
-
-  function downloadFile(filename, content, mime){
-    try{
-      const blob = new Blob([content], { type: mime || 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+  function stripPageNumberLines(text){
+    return text.split('\n').filter(line => {
+      const t = line.trim();
+      if(!t) return true;
+      if(/^\d{1,4}$/.test(t)) return false; // bare page number
+      if(/^page\s+\d+/i.test(t)) return false;
       return true;
-    } catch(e){
-      return false;
+    }).join('\n');
+  }
+
+  function removeRepeatedLines(pagesLines){
+    // pagesLines: array of arrays of strings (lines per page). Removes lines that
+    // repeat verbatim across a large fraction of pages (running headers/footers).
+    const freq = new Map();
+    pagesLines.forEach(lines => {
+      const uniq = new Set(lines.map(l=>l.trim()).filter(l=>l && l.length<90));
+      uniq.forEach(l => freq.set(l, (freq.get(l)||0)+1));
+    });
+    const total = pagesLines.length;
+    const boiler = new Set();
+    if(total > 4){
+      freq.forEach((count, line) => { if(count >= total*0.4) boiler.add(line); });
     }
+    return pagesLines.map(lines => lines.filter(l => !boiler.has(l.trim())));
   }
 
-  function escapeHtml(s){
-    return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  // ---------- Parsers ----------
+  async function parseFile(file){
+    const name = file.name.toLowerCase();
+    if(name.endsWith('.pdf')) return parsePdf(file);
+    if(name.endsWith('.epub')) return parseEpub(file);
+    if(name.endsWith('.docx')) return parseDocx(file);
+    if(name.endsWith('.txt')) return parseTxt(file);
+    throw new Error('Unsupported file type');
   }
 
-  function tiltFor(i){
-    const vals = [-3, 2, -1.5, 3, -2.5, 1.5];
-    return vals[i % vals.length] + 'deg';
+  async function parseTxt(file){
+    const text = await file.text();
+    const title = file.name.replace(/\.txt$/i,'');
+    return chapterizePlainText(title, text);
   }
 
-  function renderCard(i, ref){
-    const el = document.createElement('div');
-    el.className = 'card';
-    el.id = `card-${i}`;
-    el.dataset.verdict = 'pending';
-    el.style.setProperty('--tilt', tiltFor(i));
-    el.innerHTML = `
-      <div class="card-top">
-        <div class="card-index">No. ${String(i+1).padStart(3,'0')}</div>
-        <div class="stamp pending" id="stamp-${i}">Checking…</div>
-      </div>
-      <div class="ref-text">${escapeHtml(ref)}</div>
-      <div id="body-${i}"><div class="pending-text">Querying Crossref, PubMed, Semantic Scholar, and arXiv…</div></div>
-      <button class="retry-btn" id="retry-${i}" type="button">↻ Recheck this one</button>
-    `;
-    return el;
-  }
-
-  function updateCard(i, verification){
-    const stampEl = document.getElementById(`stamp-${i}`);
-    const bodyEl = document.getElementById(`body-${i}`);
-    const cardEl = document.getElementById(`card-${i}`);
-    const cls = classify(verification.results);
-    if (cardEl) cardEl.dataset.verdict = cls.verdict;
-
-    stampEl.classList.remove('pending');
-    stampEl.classList.add(cls.verdict, 'animate');
-    stampEl.textContent = cls.label;
-
-    let html = '';
-    const errors = verification.results.filter(r => r.error);
-
-    if (cls.best){
-      const b = cls.best;
-      html += '<div class="meta">';
-      if (b.title) html += `<div class="k">Title</div><div class="v">${escapeHtml(b.title)}</div>`;
-      if (b.authors) html += `<div class="k">Authors</div><div class="v">${escapeHtml(b.authors)}</div>`;
-      if (b.year) html += `<div class="k">Year</div><div class="v">${escapeHtml(b.year)}</div>`;
-      if (b.journal) html += `<div class="k">Venue</div><div class="v">${escapeHtml(b.journal)}</div>`;
-      html += `<div class="k">Source</div><div class="v">${escapeHtml(b.source)}${b.url ? ` — <a href="${escapeHtml(b.url)}" target="_blank" rel="noopener">view record</a>` : ''}</div>`;
-      html += '</div>';
-      if (typeof b.score === 'number'){
-        const pct = Math.round(b.score * 100);
-        html += `<div class="score-row"><div class="score-track"><div class="score-fill" style="width:${pct}%"></div></div><div class="score-label">${pct}% title match</div></div>`;
+  function chapterizePlainText(title, text){
+    const lines = text.split('\n');
+    const heading = /^\s*(chapter|part|book)\s+([0-9]+|[ivxlcdm]+)\b.*$/i;
+    const breaks = [];
+    lines.forEach((line,i) => { if(heading.test(line.trim()) && line.trim().length < 70) breaks.push(i); });
+    const chapters = [];
+    if(breaks.length >= 2){
+      for(let i=0;i<breaks.length;i++){
+        const start = breaks[i];
+        const end = i+1 < breaks.length ? breaks[i+1] : lines.length;
+        const chapTitle = lines[start].trim();
+        const body = lines.slice(start+1, end).join('\n');
+        chapters.push({ title: chapTitle, text: body });
       }
-    } else if (cls.verdict === 'checkfail'){
-      html += '<div class="pending-text">Couldn\'t reach enough sources to check this one just now (likely a rate limit or network hiccup) — this is not a verdict either way. Try rechecking.</div>';
     } else {
-      html += '<div class="pending-text">No matching record found in Crossref, PubMed, Semantic Scholar, or arXiv. This does not confirm the reference is fabricated — it can also mean a very new paper, a non-English title, or a source these indexes under-cover. Worth a manual check before concluding anything.</div>';
-    }
-
-    if (errors.length){
-      html += `<div class="error-note">Unreachable: ${errors.map(e => escapeHtml(e.source)).join(', ')}</div>`;
-    }
-
-    bodyEl.innerHTML = html;
-
-    const retryBtn = document.getElementById(`retry-${i}`);
-    if (retryBtn) retryBtn.classList.add('show');
-  }
-
-  async function runWithConcurrency(items, worker, concurrency, onEach){
-    let idx = 0;
-    async function next(){
-      while (idx < items.length){
-        const i = idx++;
-        const result = await worker(items[i], i);
-        onEach(i, result);
-        await sleep(150);
+      // fallback: chunk by word count
+      const words = text.split(/\s+/);
+      const chunkSize = 3000;
+      let idx = 1;
+      for(let i=0;i<words.length;i+=chunkSize){
+        chapters.push({ title: 'Part '+idx, text: words.slice(i,i+chunkSize).join(' ') });
+        idx++;
       }
     }
-    const runners = Array.from({length: Math.min(concurrency, items.length)}, next);
-    await Promise.all(runners);
+    return { title, chapters };
   }
 
-  const refsInput = document.getElementById('refsInput');
-  const checkBtn = document.getElementById('checkBtn');
-  const clearBtn = document.getElementById('clearBtn');
-  const refCount = document.getElementById('refCount');
-  const emptyNote = document.getElementById('emptyNote');
-  const resultsEl = document.getElementById('results');
-  const summaryEl = document.getElementById('summary');
-  const cVerified = document.getElementById('cVerified');
-  const cReview = document.getElementById('cReview');
-  const cNotfound = document.getElementById('cNotfound');
-  const copyBtn = document.getElementById('copyBtn');
-  const filterClearEl = document.getElementById('filterClear');
-  const confirmedPanel = document.getElementById('confirmedPanel');
-  const styleTabsEl = document.getElementById('styleTabs');
-  const citationListEl = document.getElementById('citationList');
-  const copyCitationsBtn = document.getElementById('copyCitationsBtn');
-  const exportBibtexBtn = document.getElementById('exportBibtexBtn');
-  const exportRisBtn = document.getElementById('exportRisBtn');
-
-  let lastRun = [];
-  let currentRefs = [];
-  let activeFilter = null;
-  let currentStyle = 'apa';
-
-  function applyFilter(){
-    resultsEl.querySelectorAll('.card').forEach(card => {
-      const v = card.dataset.verdict;
-      let visible = true;
-      if (activeFilter){
-        visible = (activeFilter === 'notfound') ? (v === 'notfound' || v === 'checkfail') : (v === activeFilter);
-      }
-      card.style.display = visible ? '' : 'none';
+  async function parseDocx(file){
+    const buf = await file.arrayBuffer();
+    const result = await mammoth.convertToHtml({ arrayBuffer: buf }, {
+      styleMap: ["p[style-name='Heading 1'] => h1:fresh", "p[style-name='Heading 2'] => h1:fresh"]
     });
-    document.querySelectorAll('.filter-item').forEach(el => el.classList.toggle('active', el.dataset.filter === activeFilter));
-    filterClearEl.classList.toggle('show', !!activeFilter);
-  }
-
-  function citationHtml(rec, style){
-    const text = formatCitation(rec, style);
-    const escaped = escapeHtml(text);
-    const doiUrl = rec.doi ? `https://doi.org/${rec.doi}` : rec.url;
-    if (doiUrl){
-      const escapedUrl = escapeHtml(doiUrl);
-      if (escaped.includes(escapedUrl)){
-        return escaped.replace(escapedUrl, `<a href="${escapedUrl}" target="_blank" rel="noopener">${escapedUrl}</a>`);
+    const doc = new DOMParser().parseFromString(result.value, 'text/html');
+    const chapters = [];
+    let cur = null;
+    Array.from(doc.body.children).forEach(node => {
+      if(/^h1$/i.test(node.tagName)){
+        cur = { title: node.textContent.trim() || ('Chapter '+(chapters.length+1)), text: '' };
+        chapters.push(cur);
+      } else {
+        const t = node.textContent.trim();
+        if(!t) return;
+        if(!cur){ cur = { title: 'Chapter 1', text: '' }; chapters.push(cur); }
+        cur.text += t + '\n\n';
       }
+    });
+    if(chapters.length === 0){
+      chapters.push({ title: 'Document', text: doc.body.textContent.trim() });
     }
-    return escaped;
+    return { title: file.name.replace(/\.docx$/i,''), chapters };
   }
 
-  function getVerifiedRecords(){
-    return lastRun.filter(r => r && r.verdictKey === 'verified' && r.best).map(r => r.best);
-  }
+  async function parseEpub(file){
+    const buf = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buf);
+    const containerXml = await zip.file('META-INF/container.xml').async('text');
+    const containerDoc = new DOMParser().parseFromString(containerXml, 'application/xml');
+    const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
+    const opfDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/')+1) : '';
+    const opfText = await zip.file(opfPath).async('text');
+    const opfDoc = new DOMParser().parseFromString(opfText, 'application/xml');
 
-  function renderConfirmedPanel(){
-    const recs = getVerifiedRecords();
-    if (recs.length === 0){
-      confirmedPanel.classList.remove('show');
-      citationListEl.innerHTML = '';
-      return;
-    }
-    confirmedPanel.classList.add('show');
-    citationListEl.innerHTML = recs.map(rec => `<div class="citation-entry">${citationHtml(rec, currentStyle)}</div>`).join('');
-  }
+    const bookTitle = (opfDoc.querySelector('metadata > *[*|title], metadata title') || {}).textContent || file.name.replace(/\.epub$/i,'');
 
-  function recomputeSummary(){
-    const counts = { verified: 0, review: 0, notfound: 0, checkfail: 0 };
-    lastRun.forEach(r => { if (r && counts[r.verdictKey] !== undefined) counts[r.verdictKey]++; });
-    cVerified.textContent = counts.verified;
-    cReview.textContent = counts.review;
-    cNotfound.textContent = counts.notfound + counts.checkfail;
-    applyFilter();
-    renderConfirmedPanel();
-  }
+    const manifest = {};
+    opfDoc.querySelectorAll('manifest > item').forEach(item => {
+      manifest[item.getAttribute('id')] = {
+        href: opfDir + item.getAttribute('href'),
+        mediaType: item.getAttribute('media-type')
+      };
+    });
+    const spineIds = Array.from(opfDoc.querySelectorAll('spine > itemref')).map(i => i.getAttribute('idref'));
 
-  async function retryOne(i){
-    const ref = currentRefs[i];
-    if (!ref) return;
-    const stampEl = document.getElementById(`stamp-${i}`);
-    const bodyEl = document.getElementById(`body-${i}`);
-    const retryBtn = document.getElementById(`retry-${i}`);
-    stampEl.className = 'stamp pending';
-    stampEl.textContent = 'Checking…';
-    bodyEl.innerHTML = '<div class="pending-text">Re-querying Crossref, PubMed, Semantic Scholar, and arXiv…</div>';
-    if (retryBtn) retryBtn.classList.remove('show');
-    const verification = await verifyReference(ref);
-    updateCard(i, verification);
-    const cls = classify(verification.results);
-    lastRun[i] = { ref, verdictKey: cls.verdict, verdict: cls.label, best: cls.best };
-    recomputeSummary();
-  }
-
-  resultsEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('.retry-btn');
-    if (!btn) return;
-    const i = parseInt(btn.id.replace('retry-',''), 10);
-    retryOne(i);
-  });
-
-  summaryEl.addEventListener('click', (e) => {
-    const item = e.target.closest('.filter-item');
-    if (item){
-      const f = item.dataset.filter;
-      activeFilter = (activeFilter === f) ? null : f;
-      applyFilter();
-      return;
-    }
-    if (e.target.closest('#filterClear')){
-      activeFilter = null;
-      applyFilter();
-    }
-  });
-
-  styleTabsEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('.style-tab');
-    if (!btn) return;
-    currentStyle = btn.dataset.style;
-    styleTabsEl.querySelectorAll('.style-tab').forEach(b => b.classList.toggle('active', b === btn));
-    renderConfirmedPanel();
-  });
-
-  copyCitationsBtn.addEventListener('click', async () => {
-    const recs = getVerifiedRecords();
-    const text = recs.map(rec => formatCitation(rec, currentStyle)).join('\n\n');
+    // Try to build a title lookup from nav/toc
+    const titleByHref = {};
+    const navItem = Object.values(manifest).find(m => m.mediaType === 'application/xhtml+xml' && m.href.match(/nav/i));
+    const ncxItem = Object.values(manifest).find(m => m.mediaType === 'application/x-dtbncx+xml');
     try{
-      await navigator.clipboard.writeText(text);
-      copyCitationsBtn.textContent = 'Copied ✓';
-    } catch(e){
-      copyCitationsBtn.textContent = 'Copy failed';
+      if(navItem && zip.file(navItem.href)){
+        const navText = await zip.file(navItem.href).async('text');
+        const navDoc = new DOMParser().parseFromString(navText, 'text/html');
+        navDoc.querySelectorAll('a[href]').forEach(a => {
+          const href = decodeURIComponent(a.getAttribute('href').split('#')[0]);
+          titleByHref[href] = a.textContent.trim();
+        });
+      } else if(ncxItem && zip.file(ncxItem.href)){
+        const ncxText = await zip.file(ncxItem.href).async('text');
+        const ncxDoc = new DOMParser().parseFromString(ncxText, 'application/xml');
+        ncxDoc.querySelectorAll('navPoint').forEach(np => {
+          const src = np.querySelector('content')?.getAttribute('src');
+          const label = np.querySelector('navLabel > text')?.textContent;
+          if(src && label) titleByHref[decodeURIComponent(src.split('#')[0])] = label.trim();
+        });
+      }
+    }catch(e){ /* toc parsing best-effort */ }
+
+    const chapters = [];
+    for(const id of spineIds){
+      const item = manifest[id];
+      if(!item || !zip.file(item.href)) continue;
+      const html = await zip.file(item.href).async('text');
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      doc.querySelectorAll('script,style').forEach(n=>n.remove());
+      const text = doc.body ? doc.body.textContent.replace(/\n{2,}/g,'\n\n').trim() : '';
+      if(!text || text.length < 20) continue; // skip empty/near-empty spine items (often blank separators)
+      const shortHref = item.href.split('/').pop();
+      let title = titleByHref[item.href] || titleByHref[shortHref];
+      if(!title){
+        const h = doc.querySelector('h1,h2,h3');
+        title = h ? h.textContent.trim() : ('Chapter '+(chapters.length+1));
+      }
+      chapters.push({ title, text });
     }
-    setTimeout(() => copyCitationsBtn.textContent = 'Copy formatted list', 1500);
-  });
+    return { title: bookTitle, chapters };
+  }
 
-  exportBibtexBtn.addEventListener('click', () => {
-    const recs = getVerifiedRecords();
-    const content = recs.map((rec, idx) => toBibtexEntry(rec, idx + 1)).join('\n\n');
-    const ok = downloadFile('confirmed-references.bib', content, 'application/x-bibtex');
-    if (!ok){
-      exportBibtexBtn.textContent = 'Download failed';
-      setTimeout(() => exportBibtexBtn.textContent = 'Download BibTeX (.bib)', 1800);
-    }
-  });
+  async function parsePdf(file){
+    const buf = await file.arrayBuffer();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const pagesLines = []; // array of array-of-lines
+    const pagesMeta = []; // per page: {lines:[{text,size}]}
 
-  exportRisBtn.addEventListener('click', () => {
-    const recs = getVerifiedRecords();
-    const content = recs.map(rec => toRisEntry(rec)).join('\n\n');
-    const ok = downloadFile('confirmed-references.ris', content, 'application/x-research-info-systems');
-    if (!ok){
-      exportRisBtn.textContent = 'Download failed';
-      setTimeout(() => exportRisBtn.textContent = 'Download RIS — EndNote / RefMan / RefWorks (.ris)', 1800);
-    }
-  });
-
-  refsInput.addEventListener('input', () => {
-    const n = splitReferences(refsInput.value).length;
-    refCount.textContent = n ? `${n} reference${n === 1 ? '' : 's'} detected` : '';
-  });
-
-  clearBtn.addEventListener('click', () => {
-    refsInput.value = '';
-    refCount.textContent = '';
-    resultsEl.innerHTML = '';
-    summaryEl.classList.remove('show');
-    emptyNote.classList.remove('show');
-    lastRun = [];
-    currentRefs = [];
-    activeFilter = null;
-    applyFilter();
-    renderConfirmedPanel();
-  });
-
-  checkBtn.addEventListener('click', async () => {
-    const refs = splitReferences(refsInput.value);
-    emptyNote.classList.remove('show');
-    if (refs.length === 0){
-      emptyNote.classList.add('show');
-      return;
+    for(let p=1; p<=pdf.numPages; p++){
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      // group items into lines by y coordinate
+      const rows = [];
+      content.items.forEach(it => {
+        const y = Math.round(it.transform[5]);
+        const size = Math.abs(it.transform[0]) || 1;
+        let row = rows.find(r => Math.abs(r.y - y) < 3);
+        if(!row){ row = { y, size, text: '' }; rows.push(row); }
+        row.text += it.str;
+        row.size = Math.max(row.size, size);
+      });
+      rows.sort((a,b) => b.y - a.y);
+      pagesMeta.push(rows);
+      pagesLines.push(rows.map(r => r.text));
     }
 
-    resultsEl.innerHTML = '';
-    summaryEl.classList.remove('show');
-    checkBtn.disabled = true;
-    checkBtn.textContent = 'Verifying…';
-    activeFilter = null;
+    const cleanedLines = removeRepeatedLines(pagesLines);
+    // recompute rows with cleaned text but keep sizes aligned by index
+    const avgSize = (() => {
+      let sum=0, n=0;
+      pagesMeta.forEach(rows => rows.forEach(r => { sum+=r.size; n++; }));
+      return n ? sum/n : 10;
+    })();
 
-    currentRefs = refs;
-    refs.forEach((ref, i) => resultsEl.appendChild(renderCard(i, ref)));
-
-    lastRun = new Array(refs.length);
-    summaryEl.classList.add('show');
-    renderConfirmedPanel();
-
-    await runWithConcurrency(refs, verifyReference, 3, (i, verification) => {
-      updateCard(i, verification);
-      const cls = classify(verification.results);
-      lastRun[i] = { ref: refs[i], verdictKey: cls.verdict, verdict: cls.label, best: cls.best };
-      recomputeSummary();
+    // Build full line stream with heading flags
+    const stream = [];
+    pagesMeta.forEach((rows, pIdx) => {
+      const kept = new Set(cleanedLines[pIdx]);
+      rows.forEach(r => {
+        if(!kept.has(r.text)) return;
+        const t = r.text.trim();
+        if(!t) return;
+        const isHeading = t.length < 70 && r.size > avgSize * 1.25 && !/^\d+$/.test(t);
+        stream.push({ text: t, heading: isHeading });
+      });
     });
 
-    checkBtn.disabled = false;
-    checkBtn.textContent = 'File & Verify →';
+    // find heading-based chapter breaks
+    const breakIdx = [];
+    stream.forEach((row,i) => { if(row.heading) breakIdx.push(i); });
+
+    const chapters = [];
+    if(breakIdx.length >= 2){
+      for(let i=0;i<breakIdx.length;i++){
+        const start = breakIdx[i];
+        const end = i+1<breakIdx.length ? breakIdx[i+1] : stream.length;
+        const title = stream[start].text;
+        const body = stream.slice(start+1, end).map(r=>r.text).join('\n');
+        if(body.trim().length > 30) chapters.push({ title, text: body });
+      }
+    } else {
+      // fallback: chunk by pages
+      const perChunk = Math.max(5, Math.ceil(pdf.numPages/12));
+      for(let start=0; start<pagesLines.length; start+=perChunk){
+        const end = Math.min(start+perChunk, pagesLines.length);
+        const body = cleanedLines.slice(start,end).flat().join('\n');
+        chapters.push({ title: 'Pages '+(start+1)+'–'+end, text: body });
+      }
+    }
+    return { title: file.name.replace(/\.pdf$/i,''), chapters };
+  }
+
+  // ---------- Post-process chapters into sentence arrays ----------
+  function finalizeChapters(raw){
+    return raw.chapters.map((c, i) => {
+      let text = c.text;
+      if(skipRefs.checked) text = stripBoilerplateSection(text);
+      text = stripPageNumberLines(text);
+      const isFront = FRONTMATTER_TITLES.test(c.title.trim());
+      const sentences = splitSentences(text);
+      return {
+        title: c.title || ('Chapter '+(i+1)),
+        sentences,
+        skip: skipFront.checked && isFront
+      };
+    }).filter(c => c.sentences.length > 0 || c.skip === false ? true : true);
+  }
+
+  // ---------- Rendering ----------
+  function renderChapterList(){
+    el('bookTitle').textContent = book.title;
+    const activeCount = book.chapters.filter(c=>!c.skip).length;
+    el('bookMeta').textContent = book.chapters.length + ' chapters · ' + activeCount + ' to read';
+    const ul = el('chapterList');
+    ul.innerHTML = '';
+    book.chapters.forEach((c, i) => {
+      const li = document.createElement('li');
+      li.className = (i===curChapter ? 'active ' : '') + (c.skip ? 'skipped' : '');
+      li.innerHTML = '<span>'+escapeHtml(c.title)+'</span><span class="n">'+String(i+1).padStart(2,'0')+'</span>';
+      li.addEventListener('click', () => { jumpToChapter(i); });
+      ul.appendChild(li);
+    });
+  }
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function drawDial(fraction){
+    const svg = el('dialSvg');
+    const R = 88, cx=100, cy=100;
+    const ticks = [];
+    const N = 24;
+    for(let i=0;i<N;i++){
+      const a = (i/N) * Math.PI*2 - Math.PI/2;
+      const on = i/N <= fraction;
+      const r1 = R-6, r2 = R;
+      const x1 = cx+r1*Math.cos(a), y1 = cy+r1*Math.sin(a);
+      const x2 = cx+r2*Math.cos(a), y2 = cy+r2*Math.sin(a);
+      ticks.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${on?'#C98A3E':'#33383F'}" stroke-width="3" stroke-linecap="round"/>`);
+    }
+    const needleA = fraction * Math.PI*2 - Math.PI/2;
+    const nx = cx + (R-18)*Math.cos(needleA), ny = cy + (R-18)*Math.sin(needleA);
+    svg.innerHTML = `
+      <circle cx="${cx}" cy="${cy}" r="${R-16}" fill="#1E2227" stroke="#33383F" stroke-width="1"/>
+      ${ticks.join('')}
+      <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#E0A758" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="${cx}" cy="${cy}" r="4" fill="#E0A758"/>
+    `;
+    el('dialPct').textContent = Math.round(fraction*100)+'%';
+  }
+
+  function updateNowPlaying(){
+    const chap = book.chapters[curChapter];
+    el('npChapter').textContent = chap ? chap.title : '—';
+    el('npSentence').textContent = chap && chap.sentences[curSentence] ? chap.sentences[curSentence] : (chap && chap.skip ? '(skipped section)' : '');
+    const frac = chap && chap.sentences.length ? curSentence / chap.sentences.length : 0;
+    drawDial(frac);
+    renderChapterList();
+    updateMediaSession();
+  }
+
+  // ---------- TTS Player ----------
+  let wakeLock = null;
+  async function requestWake(){
+    try{ if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }catch(e){}
+  }
+  function releaseWake(){ try{ wakeLock && wakeLock.release(); wakeLock=null; }catch(e){} }
+
+  // Chrome speechSynthesis pause bug workaround
+  setInterval(() => {
+    if(speechSynthesis.speaking && !speechSynthesis.paused){
+      speechSynthesis.pause(); speechSynthesis.resume();
+    }
+  }, 9000);
+
+  function currentSentenceText(){
+    const chap = book.chapters[curChapter];
+    if(!chap) return null;
+    return chap.sentences[curSentence] || null;
+  }
+
+  function speakCurrent(){
+    speechSynthesis.cancel();
+    const text = currentSentenceText();
+    if(text == null){
+      advanceChapter(1, true);
+      return;
+    }
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = parseFloat(rateSlider.value);
+    const chosen = voices.find(v => v.name === voiceSelect.value);
+    if(chosen) utt.voice = chosen;
+    utt.onend = () => { if(isPlaying) stepSentence(1, true); };
+    utt.onerror = () => { if(isPlaying) stepSentence(1, true); };
+    speechSynthesis.speak(utt);
+    updateNowPlaying();
+    saveState();
+  }
+
+  function play(){
+    if(!book) return;
+    // if current chapter is a skipped one, hop forward first
+    if(book.chapters[curChapter] && book.chapters[curChapter].skip){ advanceChapter(1, false); }
+    isPlaying = true;
+    el('playBtn').textContent = '❚❚';
+    requestWake();
+    speakCurrent();
+  }
+  function pause(){
+    isPlaying = false;
+    el('playBtn').textContent = '▶';
+    speechSynthesis.cancel();
+    releaseWake();
+  }
+  function togglePlay(){ isPlaying ? pause() : play(); }
+
+  function stepSentence(dir, autoContinue){
+    const chap = book.chapters[curChapter];
+    if(!chap) return;
+    curSentence += dir;
+    if(curSentence < 0){
+      advanceChapter(-1, autoContinue, true);
+      return;
+    }
+    if(curSentence >= chap.sentences.length){
+      advanceChapter(1, autoContinue);
+      return;
+    }
+    if(isPlaying && autoContinue) speakCurrent();
+    else updateNowPlaying();
+    saveState();
+  }
+
+  function advanceChapter(dir, autoContinue, toEnd){
+    let idx = curChapter + dir;
+    while(idx >= 0 && idx < book.chapters.length && book.chapters[idx].skip) idx += dir;
+    if(idx < 0 || idx >= book.chapters.length){
+      pause();
+      return;
+    }
+    curChapter = idx;
+    curSentence = toEnd ? Math.max(0, book.chapters[idx].sentences.length-1) : 0;
+    if(isPlaying && autoContinue !== false) speakCurrent();
+    else updateNowPlaying();
+    saveState();
+  }
+
+  function jumpToChapter(i){
+    if(book.chapters[i].skip) return;
+    curChapter = i; curSentence = 0;
+    if(isPlaying) speakCurrent(); else updateNowPlaying();
+    saveState();
+  }
+
+  // ---------- Media Session (lock-screen controls) ----------
+  function updateMediaSession(){
+    if(!('mediaSession' in navigator) || !book) return;
+    const chap = book.chapters[curChapter];
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: chap ? chap.title : '',
+      artist: book.title,
+      album: 'Backread'
+    });
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    navigator.mediaSession.setActionHandler('play', play);
+    navigator.mediaSession.setActionHandler('pause', pause);
+    navigator.mediaSession.setActionHandler('previoustrack', () => advanceChapter(-1, true));
+    navigator.mediaSession.setActionHandler('nexttrack', () => advanceChapter(1, true));
+    navigator.mediaSession.setActionHandler('seekbackward', () => stepSentence(-1, true));
+    navigator.mediaSession.setActionHandler('seekforward', () => stepSentence(1, true));
+  }
+
+  // ---------- Voices ----------
+  const MALE_NAME_HINT = /\b(david|mark|guy|george|ryan|daniel|oliver|arthur|fred|alex|james|paul|thomas|will|matthew|eric|brian|sean|nathan)\b/i;
+  const FEMALE_NAME_HINT = /\b(zira|samantha|susan|hazel|libby|sonia|karen|victoria|amy|emma|kate|serena|fiona|moira|tessa|shelley|catherine|allison|ava|joanna|salli|kimberly|olivia|amelia)\b/i;
+
+  function classifyVoice(v){
+    const lang = (v.lang||'').toLowerCase();
+    const name = v.name||'';
+    let accent = 'Other';
+    if(lang.startsWith('en-us') || /us english|united states/i.test(name)) accent = 'American';
+    else if(lang.startsWith('en-gb') || /uk english|united kingdom|british/i.test(name)) accent = 'British';
+    else if(lang.startsWith('en')) accent = 'Other English';
+
+    let gender = 'Unknown';
+    if(/\bmale\b/i.test(name) && !/female/i.test(name)) gender = 'Male';
+    else if(/\bfemale\b/i.test(name)) gender = 'Female';
+    else if(MALE_NAME_HINT.test(name)) gender = 'Male';
+    else if(FEMALE_NAME_HINT.test(name)) gender = 'Female';
+
+    // Prefer higher-quality "Natural"/"Online"/neural voices when available (mainly Edge)
+    const quality = /natural|online|neural|premium|enhanced/i.test(name) ? 2 : 1;
+    return { accent, gender, quality };
+  }
+
+  let voiceMeta = []; // parallel array to `voices`, from classifyVoice
+
+  function populateVoices(){
+    const all = speechSynthesis.getVoices();
+    voices = all.filter(v => v.lang.toLowerCase().startsWith('en'));
+    if(voices.length === 0) voices = all;
+    voiceMeta = voices.map(classifyVoice);
+
+    // --- advanced full list ---
+    const sel = el('voiceSelect');
+    sel.innerHTML = '';
+    voices.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v.name; o.textContent = v.name + ' (' + v.lang + ')';
+      sel.appendChild(o);
+    });
+
+    // --- accent select: only offer accents that actually exist on this device ---
+    const accentOrder = ['American','British','Other English','Other'];
+    const accentsPresent = accentOrder.filter(a => voiceMeta.some(m => m.accent === a));
+    const accentSel = el('accentSelect');
+    const prevAccent = accentSel.value;
+    accentSel.innerHTML = '';
+    accentsPresent.forEach(a => {
+      const o = document.createElement('option'); o.value = a; o.textContent = a; accentSel.appendChild(o);
+    });
+    if(accentsPresent.includes(prevAccent)) accentSel.value = prevAccent;
+    else if(accentsPresent.includes('American')) accentSel.value = 'American';
+
+    populateGenderOptions();
+
+    if(window.__preferredVoiceName && voices.some(v=>v.name===window.__preferredVoiceName)){
+      sel.value = window.__preferredVoiceName;
+      syncSelectorsToVoice(window.__preferredVoiceName);
+    } else {
+      applyBestVoiceForSelectors();
+    }
+    updateVoiceQualityHint();
+  }
+  speechSynthesis.onvoiceschanged = populateVoices;
+
+  function populateGenderOptions(){
+    const accent = el('accentSelect').value;
+    const gendersPresent = ['Male','Female','Unknown'].filter(g =>
+      voiceMeta.some((m,i) => m.accent === accent && m.gender === g)
+    );
+    const genderSel = el('genderSelect');
+    const prevGender = genderSel.value;
+    genderSel.innerHTML = '';
+    gendersPresent.forEach(g => {
+      const o = document.createElement('option');
+      o.value = g; o.textContent = (g === 'Unknown' ? 'Any voice' : g);
+      genderSel.appendChild(o);
+    });
+    if(gendersPresent.includes(prevGender)) genderSel.value = prevGender;
+  }
+
+  function bestVoiceFor(accent, gender){
+    let candidates = voices.map((v,i)=>({v,m:voiceMeta[i],i})).filter(c => c.m.accent === accent);
+    if(gender && gender !== 'Unknown'){
+      const withGender = candidates.filter(c => c.m.gender === gender);
+      if(withGender.length) candidates = withGender;
+    }
+    if(!candidates.length) candidates = voices.map((v,i)=>({v,m:voiceMeta[i],i}));
+    candidates.sort((a,b) => b.m.quality - a.m.quality);
+    return candidates[0] ? candidates[0].v : null;
+  }
+
+  function applyBestVoiceForSelectors(){
+    const accent = el('accentSelect').value;
+    const gender = el('genderSelect').value;
+    const best = bestVoiceFor(accent, gender);
+    if(best){
+      el('voiceSelect').value = best.name;
+      window.__preferredVoiceName = best.name;
+    }
+  }
+
+  function syncSelectorsToVoice(name){
+    const idx = voices.findIndex(v => v.name === name);
+    if(idx < 0) return;
+    const m = voiceMeta[idx];
+    if([...el('accentSelect').options].some(o=>o.value===m.accent)) el('accentSelect').value = m.accent;
+    populateGenderOptions();
+    if([...el('genderSelect').options].some(o=>o.value===m.gender)) el('genderSelect').value = m.gender;
+  }
+
+  function updateVoiceQualityHint(){
+    const anyNatural = voiceMeta.some(m => m.quality === 2);
+    el('voiceQualityHint').textContent = anyNatural
+      ? ''
+      : 'For noticeably more natural-sounding voices on Windows, try opening this page in Microsoft Edge — it offers free "Natural"-quality voices the standard Windows voices don\u2019t.';
+  }
+
+  el('accentSelect').addEventListener('change', () => {
+    populateGenderOptions();
+    applyBestVoiceForSelectors();
+    if(isPlaying) speakCurrent();
+    saveState();
+  });
+  el('genderSelect').addEventListener('change', () => {
+    applyBestVoiceForSelectors();
+    if(isPlaying) speakCurrent();
+    saveState();
   });
 
-  copyBtn.addEventListener('click', async () => {
-    const lines = lastRun.filter(Boolean).map((r, i) => {
-      let line = `${i+1}. [${r.verdict}] ${r.ref}`;
-      if (r.best && r.best.title){
-        line += `\n    → Matched: "${r.best.title}" (${r.best.source}${r.best.url ? ', ' + r.best.url : ''})`;
-      }
-      return line;
-    }).join('\n\n');
-    try{
-      await navigator.clipboard.writeText(lines);
-      copyBtn.textContent = 'Copied ✓';
-      setTimeout(() => copyBtn.textContent = 'Copy report', 1500);
-    } catch(e){
-      copyBtn.textContent = 'Copy failed';
-      setTimeout(() => copyBtn.textContent = 'Copy report', 1500);
-    }
+  // ---------- Wiring ----------
+  const fileInput = el('fileInput');
+  const uploader = el('uploader');
+  const rateSlider = el('rateSlider'), rateVal = el('rateVal');
+  const voiceSelect = el('voiceSelect');
+  const skipRefs = el('skipRefs'), skipFront = el('skipFront');
+
+  ['dragenter','dragover'].forEach(ev => uploader.addEventListener(ev, e => { e.preventDefault(); uploader.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev => uploader.addEventListener(ev, e => { e.preventDefault(); uploader.classList.remove('drag'); }));
+  uploader.addEventListener('drop', e => {
+    const f = e.dataTransfer.files[0];
+    if(f) loadFile(f);
   });
+  fileInput.addEventListener('change', e => { if(e.target.files[0]) loadFile(e.target.files[0]); });
+
+  async function loadFile(file){
+    pause();
+    setStatus('Reading "'+file.name+'" …');
+    try{
+      const raw = await parseFile(file);
+      if(!raw.chapters.length) throw new Error('No readable text found in this file.');
+      book = { title: raw.title, chapters: finalizeChapters(raw) };
+      bookKey = (file.name + ':' + file.size);
+      curChapter = 0; curSentence = 0;
+      // skip forward past any front-matter to first real chapter
+      while(curChapter < book.chapters.length && book.chapters[curChapter].skip) curChapter++;
+      if(curChapter >= book.chapters.length) curChapter = 0;
+
+      const savedPos = await loadPosition(bookKey);
+      if(savedPos && book.chapters[savedPos.curChapter]){
+        curChapter = savedPos.curChapter;
+        curSentence = savedPos.curSentence || 0;
+      }
+
+      el('workspace').hidden = false;
+      setStatus('Loaded "'+book.title+'" — '+book.chapters.length+' chapters.');
+      updateNowPlaying();
+    }catch(err){
+      console.error(err);
+      setStatus('Could not read that file: '+err.message, true);
+    }
+  }
+
+  el('playBtn').addEventListener('click', togglePlay);
+  el('backBtn').addEventListener('click', () => stepSentence(-1, isPlaying));
+  el('fwdBtn').addEventListener('click', () => stepSentence(1, isPlaying));
+  el('prevChapBtn').addEventListener('click', () => advanceChapter(-1, isPlaying));
+  el('nextChapBtn').addEventListener('click', () => advanceChapter(1, isPlaying));
+
+  rateSlider.addEventListener('input', () => {
+    rateVal.textContent = parseFloat(rateSlider.value).toFixed(2)+'×';
+    if(isPlaying) speakCurrent();
+    saveState();
+  });
+  voiceSelect.addEventListener('change', () => {
+    window.__preferredVoiceName = voiceSelect.value;
+    syncSelectorsToVoice(voiceSelect.value);
+    if(isPlaying) speakCurrent();
+    saveState();
+  });
+  skipRefs.addEventListener('change', () => { if(book) rebuildCurrentBookFiltering(); saveState(); });
+  skipFront.addEventListener('change', () => { if(book){ book.chapters.forEach(c=>{}); reapplyFrontMatterSkip(); } saveState(); });
+
+  function reapplyFrontMatterSkip(){
+    book.chapters.forEach(c => {
+      if(FRONTMATTER_TITLES.test(c.title.trim())) c.skip = skipFront.checked;
+    });
+    renderChapterList();
+  }
+
+  function rebuildCurrentBookFiltering(){
+    // Note: toggling "skip refs" after load only affects newly loaded books cleanly,
+    // since original raw text isn't retained post-parse. Inform lightly via status.
+    setStatus('Tip: the "skip references" toggle applies on next file load for best results.', false);
+  }
+
+  el('resetBtn').addEventListener('click', () => {
+    pause();
+    book = null; bookKey = null;
+    el('workspace').hidden = true;
+    fileInput.value = '';
+    setStatus('');
+  });
+
+  // init
+  loadPrefs().then(populateVoices);
+  drawDial(0);
 })();
 </script>
 </body>
