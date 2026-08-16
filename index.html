@@ -2,958 +2,2085 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Backread — listen while you work</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citation Verifier</title>
 <style>
-  :root{
-    --ink:#15171A;
-    --panel:#1E2227;
-    --panel-2:#252A31;
-    --hairline:#33383F;
-    --brass:#C98A3E;
-    --brass-bright:#E0A758;
-    --teal:#4C8C86;
-    --paper:#EDEAE2;
-    --muted:#8B9198;
-    --danger:#C9634B;
-    --radius:10px;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg: #F5F6F8;
+  --surface: #FFFFFF;
+  --surface-alt: #F1F3F6;
+  --border: #E3E6EB;
+  --border-strong: #CBD2DC;
+  --navy: #12233F;
+  --navy-2: #1C3157;
+  --slate: #45526A;
+  --text: #1B2433;
+  --text-dim: #5C6779;
+  --accent: #2E5CE6;
+  --accent-dim: #E8EEFC;
+  --verified: #1B8354;
+  --verified-bg: #E6F5EC;
+  --review: #B36B1F;
+  --review-bg: #FBF0E1;
+  --notfound: #C0392B;
+  --notfound-bg: #FBEAE8;
+  --neutral: #667085;
+  --neutral-bg: #EEF0F3;
+  --font-display: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  --radius: 12px;
+  --shadow-sm: 0 1px 2px rgba(16,24,40,0.05);
+  --shadow-md: 0 6px 16px rgba(16,24,40,0.07), 0 1px 3px rgba(16,24,40,0.04);
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height:100vh;
+  padding: 40px 20px 90px;
+}
+
+.wrap{ max-width: 900px; margin: 0 auto; }
+
+header.masthead{
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+}
+.eyebrow{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.brand-row{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.brand-mark{ flex-shrink:0; border-radius:6px; box-shadow: var(--shadow-sm); }
+h1{
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(28px, 4vw, 40px);
+  color: var(--navy);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.subtitle{
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.65;
+  max-width: 680px;
+}
+.subtitle b{ color: var(--navy); font-weight: 600; }
+
+.sources-row{
+  display:flex; gap:8px; flex-wrap:wrap; margin-top: 16px;
+}
+.source-chip{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  color: var(--slate);
+}
+
+/* Input card */
+.intake{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+}
+.intake-label{
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  display:flex; justify-content:space-between; align-items:baseline;
+}
+textarea{
+  width:100%;
+  min-height: 160px;
+  resize: vertical;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--text);
+  outline:none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+textarea:focus{ border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+textarea::placeholder{ color: #9AA3B2; }
+
+.intake-footer{
+  display:flex; align-items:center; justify-content: space-between;
+  margin-top: 16px; gap: 12px; flex-wrap: wrap;
+}
+.hint{ font-size: 12.5px; color: var(--text-dim); max-width: 400px; line-height:1.55;}
+
+button.primary{
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+}
+button.primary:hover:not(:disabled){ background: var(--navy-2); box-shadow: var(--shadow-md); }
+button.primary:active:not(:disabled){ transform: translateY(1px); }
+button.primary:disabled{ opacity:0.55; cursor: default; }
+
+button.ghost{
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13.5px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--slate);
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+button.ghost:hover{ border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+/* Summary strip */
+.summary{
+  display:none;
+  margin-top: 24px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items:center;
+  color: var(--text-dim);
+}
+.summary.show{ display:flex; }
+.summary .count{ font-weight:700; }
+.summary .dot{ color: var(--border-strong); }
+.count.verified{ color: var(--verified); }
+.count.review{ color: var(--review); }
+.count.notfound{ color: var(--notfound); }
+
+.filter-item{
+  cursor: pointer;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.filter-item:hover{ background: var(--surface-alt); }
+.filter-item.active{
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+.filter-clear{
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  display: none;
+}
+.filter-clear.show{ display: inline; }
+
+/* Confirmed bibliography panel */
+.confirmed-panel{
+  display: none;
+  margin-top: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow-md);
+}
+.confirmed-panel.show{ display: block; }
+.confirmed-head{
+  display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px;
+  margin-bottom: 14px;
+}
+.confirmed-title{
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.style-tabs{ display:flex; gap:6px; flex-wrap:wrap; }
+.style-tab{
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--slate);
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+.style-tab:hover{ border-color: var(--accent); color: var(--accent); }
+.style-tab.active{ background: var(--navy); color: #fff; border-color: var(--navy); }
+
+.citation-list{
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.citation-entry{
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text);
+  padding-left: 22px;
+  text-indent: -22px;
+}
+.citation-entry a{ color: var(--accent); }
+
+.confirmed-footer{
+  display:flex; gap:10px; flex-wrap:wrap;
+  margin-top: 18px; padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.confirmed-footer button{
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 12.5px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+.confirmed-footer button:hover{ border-color: var(--accent); color: var(--accent); }
+.confirmed-empty{ font-size: 12.5px; color: var(--text-dim); font-style: italic; }
+
+/* Results list */
+#results{ margin-top: 22px; display:flex; flex-direction:column; gap:16px; }
+
+.card{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px 22px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .15s ease;
+}
+.card:hover{ box-shadow: var(--shadow-md); }
+.card-top{
+  display:flex; justify-content:space-between; align-items:flex-start; gap:14px;
+  margin-bottom: 12px;
+}
+.card-index{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  padding-top: 4px;
+}
+.ref-text{
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+/* verdict badge */
+.stamp{
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  padding: 6px 13px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (prefers-reduced-motion: no-preference){
+  .stamp.animate{
+    animation: stampin 0.2s ease both;
   }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--ink);
-    color:var(--paper);
-    font-family:'Inter',sans-serif;
-    min-height:100vh;
-    -webkit-font-smoothing:antialiased;
-  }
-  .app{max-width:960px;margin:0 auto;padding:28px 20px 80px;}
-  header.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:8px;}
-  header.top h1{
-    font-family:'Fraunces',serif;
-    font-weight:600;
-    font-size:28px;
-    letter-spacing:-0.01em;
-    margin:0;
-    color:var(--paper);
-  }
-  header.top .tag{color:var(--muted);font-size:13px;font-family:'IBM Plex Mono',monospace;}
+}
+@keyframes stampin{
+  0%{ transform: scale(0.85); opacity:0; }
+  100%{ transform: scale(1); opacity:1; }
+}
+.stamp.pending{ color: var(--neutral); background: var(--neutral-bg); }
+.stamp.verified{ color: var(--verified); background: var(--verified-bg); }
+.stamp.review{ color: var(--review); background: var(--review-bg); }
+.stamp.notfound{ color: var(--notfound); background: var(--notfound-bg); }
+.stamp.checkfail{ color: var(--neutral); background: var(--neutral-bg); }
 
-  /* Uploader */
-  .uploader{
-    border:1.5px dashed var(--hairline);
-    border-radius:var(--radius);
-    padding:38px 20px;
-    text-align:center;
-    background:var(--panel);
-    transition:border-color .15s ease, background .15s ease;
-  }
-  .uploader.drag{border-color:var(--brass);background:var(--panel-2);}
-  .uploader h2{font-family:'Fraunces',serif;font-weight:500;font-size:19px;margin:0 0 6px;}
-  .uploader p{color:var(--muted);font-size:14px;margin:0 0 18px;line-height:1.5;}
-  .uploader input[type=file]{display:none;}
-  .pick-btn{
-    display:inline-block;
-    background:var(--brass);
-    color:#1A1206;
-    font-weight:600;
-    font-size:14px;
-    padding:10px 22px;
-    border-radius:999px;
-    cursor:pointer;
-    border:none;
-  }
-  .pick-btn:hover{background:var(--brass-bright);}
-  .formats{margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.03em;}
+.retry-btn{
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 11.5px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  padding: 5px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+  margin-top: 10px;
+  display: none;
+  transition: border-color .15s ease, color .15s ease;
+}
+.retry-btn.show{ display: inline-block; }
+.retry-btn:hover{ border-color: var(--accent); color: var(--accent); }
 
-  .status{margin-top:14px;font-size:13px;color:var(--teal);font-family:'IBM Plex Mono',monospace;min-height:18px;}
-  .status.err{color:var(--danger);}
+.meta{
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  font-size: 13px;
+  color: var(--text);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  align-items:baseline;
+}
+.meta .k{ font-family: var(--font-body); font-weight:600; font-size:11px; letter-spacing:0.04em; text-transform:uppercase; color: var(--text-dim); }
+.meta .v a{ color: var(--accent); }
+.meta .v{ line-height:1.55; }
 
-  /* Workspace */
-  .workspace{display:grid;grid-template-columns:260px 1fr;gap:18px;margin-top:24px;}
-  @media (max-width:720px){ .workspace{grid-template-columns:1fr;} }
+.score-row{
+  margin-top: 12px; display:flex; align-items:center; gap:10px;
+}
+.score-track{ flex:1; height:6px; background: var(--surface-alt); border-radius:4px; overflow:hidden; }
+.score-fill{ height:100%; border-radius:4px; background: var(--accent); }
+.score-label{ font-family: var(--font-body); font-size:11.5px; color: var(--text-dim); white-space:nowrap; }
 
-  .card{background:var(--panel);border:1px solid var(--hairline);border-radius:var(--radius);}
+.pending-text{ font-size:13px; color: var(--text-dim); font-style: italic; margin-top:12px;}
+.error-note{ font-size: 12px; color: var(--notfound); font-family: var(--font-body); margin-top:10px; }
 
-  .chapters{padding:16px;max-height:640px;overflow-y:auto;}
-  .chapters .book-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;margin:0 0 2px;}
-  .chapters .book-meta{color:var(--muted);font-size:12px;margin:0 0 14px;font-family:'IBM Plex Mono',monospace;}
-  .chapters ul{list-style:none;margin:0;padding:0;}
-  .chapters li{
-    padding:9px 10px;
-    border-radius:7px;
-    font-size:13.5px;
-    color:var(--paper);
-    cursor:pointer;
-    display:flex;
-    justify-content:space-between;
-    gap:8px;
-    line-height:1.3;
-  }
-  .chapters li:hover{background:var(--panel-2);}
-  .chapters li.active{background:var(--brass);color:#1A1206;font-weight:600;}
-  .chapters li .n{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;flex-shrink:0;}
-  .chapters li.active .n{color:#1A1206cc;}
-  .chapters li.skipped{opacity:.4;text-decoration:line-through;}
+/* claim + relevance */
+.claim-text{
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: var(--accent-dim);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+.claim-text .claim-k{ font-family: var(--font-body); font-weight:600; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color: var(--accent); display:block; margin-bottom:4px; }
 
-  .player{padding:22px;display:flex;flex-direction:column;align-items:center;gap:18px;}
+.relevance-row{ margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.relevance-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  padding: 5px 11px;
+  border-radius: 999px;
+}
+.relevance-badge.high{ color: var(--verified); background: var(--verified-bg); }
+.relevance-badge.moderate{ color: var(--review); background: var(--review-bg); }
+.relevance-badge.low{ color: var(--notfound); background: var(--notfound-bg); }
+.relevance-badge.unknown{ color: var(--neutral); background: var(--neutral-bg); }
+.relevance-note{ font-size: 12.5px; color: var(--text-dim); margin-top: 8px; line-height:1.55; }
+.ai-verdict{ margin-top: 10px; font-size: 13px; color: var(--text); }
+.ai-verdict .ai-tag{ font-family: var(--font-body); font-weight:600; font-size:11px; letter-spacing:0.01em; padding:3px 9px; border-radius:999px; margin-right:8px; }
+.ai-verdict .ai-tag.supports{ background: var(--verified); color:#fff; }
+.ai-verdict .ai-tag.uncertain{ background: var(--review); color:#fff; }
+.ai-verdict .ai-tag.unrelated, .ai-verdict .ai-tag.contradicts{ background: var(--notfound); color:#fff; }
+.ai-verdict .ai-tag.error{ background: var(--neutral); color:#fff; }
 
-  /* Dial */
-  .dial-wrap{width:200px;height:200px;position:relative;}
-  .dial-wrap svg{width:100%;height:100%;}
-  .dial-center{
-    position:absolute;inset:0;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;text-align:center;
-  }
-  .dial-center .pct{font-family:'IBM Plex Mono',monospace;font-size:22px;color:var(--brass-bright);}
-  .dial-center .lbl{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
+/* mode toggle */
+.mode-toggle{ display:flex; gap:8px; margin-bottom: 16px; flex-wrap:wrap; }
+.mode-btn{
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 12.5px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--slate);
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+.mode-btn:hover{ border-color: var(--accent); color: var(--accent); }
+.mode-btn.active{ background: var(--navy); color: #fff; border-color: var(--navy); }
+.mode-note{ font-size: 12.5px; color: var(--text-dim); margin: -8px 0 14px; line-height:1.55; }
 
-  .now-playing{text-align:center;max-width:440px;}
-  .now-playing .chap{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;}
-  .now-playing .sent{color:var(--muted);font-size:13px;line-height:1.5;min-height:38px;}
+/* AI panel */
+.ai-panel{
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  box-shadow: var(--shadow-sm);
+}
+.ai-panel summary{
+  cursor:pointer; font-family: var(--font-body); font-weight:600; font-size:13px;
+  color: var(--navy);
+}
+.ai-panel-body{ margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+.ai-note{ font-size:13px; color: var(--text-dim); line-height:1.6; margin: 0 0 14px; }
+.ai-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.ai-row input[type=password], .ai-row input[type=text], .ai-select{
+  font-family: var(--font-body); font-size:13.5px;
+  padding: 10px 12px; border: 1px solid var(--border-strong); border-radius:8px;
+  background: var(--surface); color: var(--text);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.ai-row input[type=password]:focus, .ai-row input[type=text]:focus, .ai-select:focus{
+  outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.ai-row input[type=password]{ flex:1; min-width: 220px; }
+.ai-row input[type=text]{ width: 190px; }
+.ai-select{ cursor:pointer; }
+.ai-status{ margin-top:12px; font-size:12.5px; color: var(--text-dim); font-family: var(--font-body); }
 
-  .transport{display:flex;align-items:center;gap:14px;}
-  .transport button{
-    background:var(--panel-2);
-    border:1px solid var(--hairline);
-    color:var(--paper);
-    width:44px;height:44px;
-    border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    cursor:pointer;
-    font-size:16px;
-  }
-  .transport button:hover{border-color:var(--brass);}
-  .transport button.play{
-    width:58px;height:58px;
-    background:var(--brass);
-    color:#1A1206;
-    border:none;
-    font-size:20px;
-  }
-  .transport button.play:hover{background:var(--brass-bright);}
-  .transport button:disabled{opacity:.35;cursor:default;}
+/* upload zone */
+.upload-zone{
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 10px;
+  padding: 32px 20px;
+  text-align: center;
+  background: var(--surface-alt);
+  transition: border-color .15s ease, background .15s ease;
+}
+.upload-zone.drag{ border-color: var(--accent); background: var(--accent-dim); }
+.upload-icon{ font-size: 22px; color: var(--accent); margin-bottom: 8px; }
+.upload-text{ font-size: 13.5px; color: var(--text-dim); line-height:1.6; }
+.upload-browse{
+  font-family: var(--font-body); font-weight:600; font-size: 13.5px;
+  background: none; border: none; color: var(--accent); text-decoration: underline;
+  cursor: pointer; padding: 0;
+}
+.upload-filename{ margin-top: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--navy); }
+.upload-status{ margin-top: 12px; font-size: 12.5px; color: var(--text-dim); line-height:1.55; }
 
-  .controls-row{width:100%;max-width:460px;display:flex;flex-direction:column;gap:12px;margin-top:4px;}
-  .ctrl{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;}
-  .ctrl label{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.03em;text-transform:uppercase;}
-  .ctrl select, .ctrl input[type=range]{accent-color:var(--brass);}
-  .ctrl select{
-    background:var(--panel-2);color:var(--paper);border:1px solid var(--hairline);
-    border-radius:6px;padding:5px 8px;font-size:12.5px;max-width:200px;
-  }
-  .toggle-row{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;font-size:12.5px;color:var(--muted);}
-  .toggle-row label{display:flex;align-items:center;gap:6px;cursor:pointer;}
-  .toggle-row input{accent-color:var(--teal);}
+/* annotated document panel */
+.doc-panel{
+  display: none;
+  margin-top: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow-md);
+}
+.doc-panel.show{ display: block; }
+.doc-panel-head{ display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px; }
+.doc-panel-title{ font-family: var(--font-body); font-weight:700; font-size:12px; letter-spacing:0.03em; text-transform:uppercase; color: var(--text-dim); }
+.doc-panel-legend{ font-size:12px; color: var(--text-dim); display:flex; align-items:center; gap:6px; }
+.legend-dot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-left:10px; }
+.legend-dot:first-child{ margin-left:0; }
+.legend-dot.verified{ background: var(--verified); }
+.legend-dot.review{ background: var(--review); }
+.legend-dot.notfound{ background: var(--notfound); }
+.doc-panel-note{ font-size:12px; color: var(--text-dim); margin-top:6px; }
+.doc-panel-body{
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  max-height: 480px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text);
+}
+.doc-panel-body p{ margin: 0 0 14px; }
+.doc-panel-body p:last-child{ margin-bottom: 0; }
+.cite-hl{
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 3px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.cite-hl.verified{ background: var(--verified-bg); color: var(--verified); }
+.cite-hl.review{ background: var(--review-bg); color: var(--review); }
+.cite-hl.notfound{ background: var(--notfound-bg); color: var(--notfound); }
+.cite-hl.pending{ background: var(--neutral-bg); color: var(--neutral); }
+.cite-hl:hover{ box-shadow: 0 0 0 2px currentColor inset; }
 
-  .hint{font-size:11px;color:var(--muted);text-align:center;max-width:420px;line-height:1.5;margin-top:4px;}
-  a.reset{color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;}
+@keyframes cardflash{
+  0%{ box-shadow: 0 0 0 3px var(--accent); }
+  100%{ box-shadow: var(--shadow-sm); }
+}
+.card.flash{ animation: cardflash 0.9s ease; }
+
+/* methodology */
+details.methodology{
+  margin-top: 36px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+details.methodology summary{
+  cursor:pointer; font-family: var(--font-body); font-weight:600; font-size:13px;
+  color: var(--navy);
+  margin-bottom: 12px;
+}
+details.methodology ul{ padding-left: 20px; margin: 10px 0; }
+details.methodology li{ margin-bottom: 8px; }
+details.methodology code{
+  font-family: var(--font-mono);
+  background: var(--surface-alt);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: var(--navy);
+}
+
+.empty-note{
+  color: var(--text-dim); font-size:13.5px; margin-top:22px; display:none;
+}
+.empty-note.show{ display:block; }
+
+.colophon{
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.colophon a{ color: var(--accent); text-decoration:none; }
+.colophon a:hover{ text-decoration: underline; }
+
+@media (max-width: 560px){
+  .meta{ grid-template-columns: 1fr; }
+  .meta .k{ margin-top:8px; }
+  .card-top{ flex-direction:column; }
+}
 </style>
 </head>
 <body>
-<div class="app">
-  <header class="top">
-    <h1>Backread</h1>
-    <span class="tag">read it to me while I work</span>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Reference Integrity Check</div>
+    <div class="brand-row">
+      <svg class="brand-mark" width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect width="24" height="24" rx="6" fill="#12233F"/>
+        <path d="M6.5 12.5l3.2 3.2L17.5 8" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h1>Citation Verifier</h1>
+    </div>
+    <p class="subtitle">Paste a bibliography below. Each entry gets looked up against five live scholarly indexes and stamped <b>Verified</b>, <b>Possible Match</b>, or <b>No Match Found</b> based on how closely the returned record matches what was cited. Switch to <b>claim + reference</b> mode to also check whether each source actually supports the specific sentence it's cited for, not just that it exists — or use <b>upload document</b> to do all of this automatically from your actual manuscript, with results highlighted right in the text.</p>
+    <div class="sources-row">
+      <span class="source-chip">CROSSREF · all disciplines, DOI registry</span>
+      <span class="source-chip">PUBMED · biomedical literature</span>
+      <span class="source-chip">SEMANTIC SCHOLAR · multidisciplinary</span>
+      <span class="source-chip">ARXIV · physics, math, CS, stats preprints</span>
+      <span class="source-chip">BIORXIV / MEDRXIV · life-science &amp; health preprints (via DOI)</span>
+    </div>
   </header>
 
-  <div class="uploader card" id="uploader">
-    <h2>Drop a book in</h2>
-    <p>PDF, EPUB, Word (.docx), or plain text.<br>It'll be split into chapters, cleaned up, and read aloud on command.</p>
-    <label class="pick-btn" for="fileInput">Choose a file</label>
-    <input type="file" id="fileInput" accept=".pdf,.epub,.docx,.txt">
-    <div class="formats">PDF · EPUB · DOCX · TXT — processed entirely in your browser, nothing is uploaded anywhere</div>
-    <div class="status" id="status"></div>
-  </div>
-
-  <div class="workspace" id="workspace" hidden>
-    <div class="chapters card">
-      <p class="book-title" id="bookTitle">—</p>
-      <p class="book-meta" id="bookMeta">—</p>
-      <ul id="chapterList"></ul>
-      <div style="margin-top:12px;"><a class="reset" id="resetBtn">Load a different book</a></div>
+  <div class="intake">
+    <div class="mode-toggle" id="modeToggle">
+      <button class="mode-btn active" data-mode="refs" type="button">References only</button>
+      <button class="mode-btn" data-mode="claims" type="button">Claim + reference pairs</button>
+      <button class="mode-btn" data-mode="upload" type="button">Upload document</button>
     </div>
+    <div class="mode-note" id="modeNote">Checks that each reference exists and resolves to a real record.</div>
+    <div class="intake-label" id="textIntakeLabel">
+      <span id="intakeLabelText">Bibliography intake</span>
+      <span id="refCount"></span>
+    </div>
+    <textarea id="refsInput" placeholder="Paste references here, one per line — or as a numbered list, e.g.
 
-    <div class="player card">
-      <div class="dial-wrap">
-        <svg viewBox="0 0 200 200" id="dialSvg"></svg>
-        <div class="dial-center">
-          <div class="pct" id="dialPct">0%</div>
-          <div class="lbl">in chapter</div>
-        </div>
+1. Smith J, Doe A. Effects of X on Y. Journal of Examples. 2021;12(3):45-59.
+2. Lee K. A totally fabricated study of nothing. Nature Fake Reviews. 2023.
+3. https://doi.org/10.1038/s41586-021-03819-2"></textarea>
+
+    <div class="upload-zone" id="uploadZone" style="display:none;">
+      <input type="file" id="fileInput" accept=".txt,.docx,.pdf,text/plain" hidden>
+      <div class="upload-inner">
+        <div class="upload-icon">↑</div>
+        <div class="upload-text">Drop a .txt, .docx, or .pdf manuscript here, or <button type="button" class="upload-browse" id="uploadBrowseBtn">browse files</button></div>
+        <div class="upload-filename" id="uploadFilename"></div>
       </div>
+    </div>
+    <div class="upload-status" id="uploadStatus" style="display:none;"></div>
 
-      <div class="now-playing">
-        <p class="chap" id="npChapter">Pick a chapter to begin</p>
-        <p class="sent" id="npSentence"></p>
+    <div class="intake-footer">
+      <div class="hint" id="intakeHint">Works best with full references (authors, title, year). One entry per line, or a numbered list — wrapped lines are merged automatically.</div>
+      <div style="display:flex; gap:10px;">
+        <button class="ghost" id="clearBtn" type="button">Clear</button>
+        <button class="primary" id="checkBtn" type="button">File &amp; Verify →</button>
       </div>
-
-      <div class="transport">
-        <button id="prevChapBtn" title="Previous chapter">⏮</button>
-        <button id="backBtn" title="Back one sentence">◀</button>
-        <button class="play" id="playBtn" title="Play / pause">▶</button>
-        <button id="fwdBtn" title="Forward one sentence">▶▶</button>
-        <button id="nextChapBtn" title="Next chapter">⏭</button>
-      </div>
-
-      <div class="controls-row">
-        <div class="ctrl">
-          <label>Speed</label>
-          <input type="range" id="rateSlider" min="0.6" max="2" step="0.05" value="1">
-          <span id="rateVal" style="font-family:'IBM Plex Mono',monospace;font-size:12px;width:36px;text-align:right;">1.0×</span>
-        </div>
-        <div class="ctrl">
-          <label>Accent</label>
-          <select id="accentSelect"></select>
-        </div>
-        <div class="ctrl">
-          <label>Voice</label>
-          <select id="genderSelect"></select>
-        </div>
-        <details id="advancedVoiceWrap" style="margin-top:-4px;">
-          <summary style="cursor:pointer;color:var(--muted);font-size:11.5px;font-family:'IBM Plex Mono',monospace;">Browse all voices on this device</summary>
-          <select id="voiceSelect" style="width:100%;margin-top:8px;"></select>
-        </details>
-        <div class="toggle-row">
-          <label><input type="checkbox" id="skipRefs" checked> Skip references / notes / index</label>
-          <label><input type="checkbox" id="skipFront" checked> Skip front matter</label>
-        </div>
-      </div>
-
-      <p class="hint">Tip: on a phone, use the lock-screen / headphone media controls to play, pause and skip — the OS keeps audio going even while the screen is off. On desktop this can keep reading in a background tab.</p>
-      <p class="hint" id="voiceQualityHint"></p>
     </div>
   </div>
 
-  <footer style="text-align:center;margin-top:30px;color:var(--muted);font-size:11.5px;font-family:'IBM Plex Mono',monospace;">
-    Built by Tony Onoja, Ph.D. — School of Health Sciences, University of Surrey
+  <div class="doc-panel" id="docPanel">
+    <div class="doc-panel-head">
+      <div class="doc-panel-title">Annotated document</div>
+      <div class="doc-panel-legend">
+        <span class="legend-dot verified"></span>Verified
+        <span class="legend-dot review"></span>Possible match
+        <span class="legend-dot notfound"></span>No match
+      </div>
+    </div>
+    <div class="doc-panel-note">Click any highlighted citation to jump to its detail card below.</div>
+    <div class="doc-panel-body" id="docPanelBody"></div>
+  </div>
+
+  <details class="ai-panel" id="aiPanel">
+    <summary>Optional: AI relevance check (bring your own API key)</summary>
+    <div class="ai-panel-body">
+      <p class="ai-note">The Topic Overlap badge below is keyword overlap between your claim and the source's abstract or title — a useful triage signal, but not a real judgment. This optional step calls your chosen AI provider directly from your browser with your own API key so it can actually read the claim against the source and judge whether it's supported, unrelated, or contradicted. Pick a provider below and paste your own key — it is sent only to that provider's API for these requests and is never stored or logged anywhere.</p>
+      <div class="ai-row">
+        <select id="aiProviderSelect" class="ai-select">
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="openai">OpenAI (GPT)</option>
+          <option value="gemini">Google (Gemini)</option>
+          <option value="groq">Groq</option>
+        </select>
+        <input type="text" id="aiModelInput" placeholder="model">
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-… (your Anthropic API key)" autocomplete="off">
+        <button class="ghost" id="runAiCheckBtn" type="button">Run AI check on claim pairs</button>
+      </div>
+      <div class="ai-status" id="aiStatus"></div>
+    </div>
+  </details>
+
+  <div class="empty-note" id="emptyNote">Paste at least one reference to begin.</div>
+
+  <div class="summary" id="summary">
+    <span class="filter-item" data-filter="verified"><span class="count verified" id="cVerified">0</span> verified</span>
+    <span class="dot">·</span>
+    <span class="filter-item" data-filter="review"><span class="count review" id="cReview">0</span> possible match</span>
+    <span class="dot">·</span>
+    <span class="filter-item" data-filter="notfound"><span class="count notfound" id="cNotfound">0</span> no match / check failed</span>
+    <span class="dot">·</span>
+    <span class="filter-clear" id="filterClear">show all</span>
+    <button class="ghost" id="copyBtn" type="button">Copy report</button>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="confirmed-panel" id="confirmedPanel">
+    <div class="confirmed-head">
+      <div class="confirmed-title">Confirmed bibliography</div>
+      <div class="style-tabs" id="styleTabs">
+        <button class="style-tab active" data-style="apa" type="button">APA</button>
+        <button class="style-tab" data-style="mla" type="button">MLA</button>
+        <button class="style-tab" data-style="chicago" type="button">Chicago</button>
+        <button class="style-tab" data-style="harvard" type="button">Harvard</button>
+        <button class="style-tab" data-style="vancouver" type="button">Vancouver</button>
+      </div>
+    </div>
+    <div class="citation-list" id="citationList"></div>
+    <div class="confirmed-footer">
+      <button class="ghost" id="copyCitationsBtn" type="button">Copy formatted list</button>
+      <button id="exportBibtexBtn" type="button">Download BibTeX (.bib)</button>
+      <button id="exportRisBtn" type="button">Download RIS — EndNote / RefMan / RefWorks (.ris)</button>
+    </div>
+  </div>
+
+  <details class="methodology">
+    <summary>Methodology &amp; limitations</summary>
+    <p>Each reference is checked with a bibliographic search against Crossref and Semantic Scholar, a cleaned term search against PubMed, and a full-text search against arXiv (volume/page/date noise is stripped first for PubMed and arXiv, since raw citation punctuation can trip up their query parsers). Each source returns its top few candidates, not just its #1 ranked guess, and the tool scores every candidate's title against your pasted text — this catches cases where the right paper wasn't ranked first. If a DOI is present in the pasted text, it's confirmed directly against Crossref's registry first and treated as authoritative; DOIs with the <code>10.1101/</code> prefix are also confirmed directly against the bioRxiv and medRxiv preprint APIs.</p>
+    <ul>
+      <li><b>Verified</b> — DOI confirmed (including via bioRxiv/medRxiv), or ≥75% word overlap with a real indexed record.</li>
+      <li><b>Possible match</b> — 40–75% overlap. Worth a manual glance; could be a paraphrased title, a preprint vs. published version, or a partial citation.</li>
+      <li><b>No match / check failed</b> — either no record cleared 40% overlap in any of the four searchable indexes, or at least two of them couldn't be reached (network issue or rate limit) — both are folded into one neutral count so an unreachable API is never confused with a real non-match. Each card says which case it is, and has a recheck button.</li>
+    </ul>
+    <p><b>Google Scholar isn't included</b> — it has no public API, and scraping it violates its terms of service and gets blocked by CAPTCHA in practice. <b>bioRxiv/medRxiv's own search isn't included either</b>, for a related reason: their public API only supports direct DOI lookups, not free-text search, so bioRxiv/medRxiv coverage here is DOI-only. Crossref, PubMed, Semantic Scholar, and arXiv together cover the large majority of what Scholar indexes for genuinely published or preprinted work, and return structured metadata rather than scraped HTML, which is what makes this kind of automated check possible at all.</p>
+    <p><b>A "no match" is a signal to check by hand, never proof of fabrication.</b> Very new papers, non-English titles, book chapters, conference proceedings, and paywalled or niche sources can all be under-indexed or absent from these databases even when they're completely real. Semantic Scholar's free public API in particular has a low, shared rate limit and can fail intermittently under load — that's what the recheck button is for. Treat this tool as a fast triage pass that narrows down what to check by hand, not a final verdict.</p>
+    <p>All lookups run directly from your browser to Crossref, PubMed, Semantic Scholar, arXiv, and the bioRxiv/medRxiv APIs — nothing is sent anywhere else or stored.</p>
+    <p><b>Filtering and export:</b> click any count in the summary row to show only references in that category; click it again (or "show all") to clear the filter. Verified references can be reformatted into APA, MLA, Chicago, Harvard, or Vancouver style and exported as BibTeX or RIS. RIS is a shared, well-documented format that EndNote, Reference Manager, RefWorks, Zotero, and Mendeley all import directly — rather than three separate near-identical proprietary exports, one RIS file works across all of them. Formatting relies on whatever metadata the matched record provides (author list, year, journal, volume/issue/pages, DOI); fields the source didn't return are simply omitted, so it's worth a final check against your target style guide before submission.</p>
+    <p><b>Claim + reference mode.</b> When you paste a claim on one line and its citation on the next (blank line between each pair), the tool still verifies the reference exists as above, and additionally pulls the abstract where the matched source provides one (Semantic Scholar, Crossref, arXiv, bioRxiv/medRxiv) and scores word overlap between your claim and that abstract. This catches the failure mode existence-checking alone misses: a real, correctly cited paper that doesn't actually say what it's being cited for. The result is shown as a Topic Overlap badge — High, Moderate, or Low — and it is keyword overlap, not comprehension. Treat "High" as "worth trusting a bit more," not proof, and "Low" as "read the source before you cite it," not proof of misuse. When the matched source has no abstract available, overlap against the title alone isn't meaningful and is flagged as such rather than scored. For an actual judgment, use the optional AI relevance check below the intake box, which sends your claim and the source's abstract (or title, if no abstract is available) to an AI model via your own API key and asks it to judge support, contradiction, or irrelevance directly. Choose Anthropic (Claude), OpenAI (GPT), Google (Gemini), or Groq — your request goes straight from your browser to that provider's own API, nothing passes through any server of ours, and your key is never stored. A default model is filled in for each provider, but you can override it in the model field if you'd rather use a different one.</p>
+    <p><b>Document upload mode.</b> Upload a .txt, .docx, or .pdf of your actual manuscript and the tool does the claim + reference pairing for you: it looks for a "References" or "Bibliography" heading to split your document into body text and bibliography, splits the bibliography into individual entries the same way the other modes do, then scans the body text for in-text citation markers in either numbered style (<code>[12]</code>, <code>[12,13]</code>, <code>[12-14]</code>) or author-year style (<code>(Smith, 2021)</code>, <code>(Smith et al., 2021; Doe, 2020)</code>) and links each one to the matching bibliography entry — by position for numbered markers, by first-author surname and year for author-year markers. The sentence around each marker becomes the "claim" for that reference, exactly as in claim + reference mode, and every reference gets checked and, where linked, relevance-scored. .docx files are read with the Mammoth library and PDFs with Mozilla's PDF.js, both loaded from a public CDN the first time you use this mode and run entirely in your browser — the document itself is never uploaded anywhere. Once checking finishes, your document text is shown back to you with every linked citation highlighted green, amber, or red by verdict; click one to jump to its detail card. This linking is regex- and heuristic-based, not a real parser: it can miss citations in unusual formats, mis-split a reference list without a clean heading, or mislink an author-year marker if two references share a surname and year. Treat the highlights as a fast way to see where the problems are concentrated, and double-check anything that looks off — the same "check by hand, don't take as proof" rule applies here as everywhere else in this tool.</p>
+  </details>
+
+  <footer class="colophon">
+    Cataloged by Anthony Onoja, Ph.D. · <a href="mailto:donmaston09@gmail.com">donmaston09@gmail.com</a>
   </footer>
+
 </div>
 
 <script>
 (function(){
-  "use strict";
+  const STOPWORDS = new Set(['the','a','an','of','and','in','on','for','to','with','study','analysis','review','effects','effect','using','from','into','part','among','between','case','approach','role','impact','via','new','based']);
 
-  // ---------- State ----------
-  let book = null; // {title, chapters:[{title, sentences:[...], skip:false}]}
-  let curChapter = 0, curSentence = 0;
-  let isPlaying = false;
-  let voices = [];
-  let bookKey = null;
-
-  const el = id => document.getElementById(id);
-  const statusEl = el('status');
-
-  function setStatus(msg, isErr){
-    statusEl.textContent = msg || '';
-    statusEl.className = 'status' + (isErr ? ' err' : '');
+  function tokenize(str){
+    return (str.toLowerCase().match(/[a-z0-9]+/g) || []).filter(w => w.length > 2 && !STOPWORDS.has(w));
   }
 
-  // ---------- Storage helpers (best-effort, non-fatal) ----------
-  async function saveState(){
-    try{
-      if(!window.storage || !bookKey) return;
-      await window.storage.set('pos:'+bookKey, JSON.stringify({curChapter, curSentence}));
-      await window.storage.set('prefs', JSON.stringify({
-        rate: parseFloat(rateSlider.value),
-        voiceName: voiceSelect.value,
-        skipRefs: skipRefs.checked,
-        skipFront: skipFront.checked
-      }));
-    }catch(e){ /* non-fatal */ }
+  function overlapScore(rawRef, candidateTitle){
+    if (!candidateTitle) return 0;
+    const rawTokens = new Set(tokenize(rawRef));
+    const candTokens = tokenize(candidateTitle);
+    if (candTokens.length === 0) return 0;
+    let matched = 0;
+    for (const t of candTokens) if (rawTokens.has(t)) matched++;
+    return matched / candTokens.length;
   }
-  async function loadPrefs(){
-    try{
-      if(!window.storage) return;
-      const r = await window.storage.get('prefs');
-      if(r && r.value){
-        const p = JSON.parse(r.value);
-        if(p.rate){ rateSlider.value = p.rate; rateVal.textContent = p.rate.toFixed(2)+'×'; }
-        if(typeof p.skipRefs === 'boolean') skipRefs.checked = p.skipRefs;
-        if(typeof p.skipFront === 'boolean') skipFront.checked = p.skipFront;
-        window.__preferredVoiceName = p.voiceName;
+
+  function extractDOI(ref){
+    const m = ref.match(/10\.\d{4,9}\/[^\s"'<>,;)\]]+/);
+    return m ? m[0].replace(/[.,;]+$/,'') : null;
+  }
+
+  function extractYear(ref){
+    const m = ref.match(/\b(19|20)\d{2}\b/);
+    return m ? m[0] : null;
+  }
+
+  function parseAuthorName(raw){
+    if (!raw) return null;
+    const parts = raw.trim().replace(/\s+/g,' ').split(' ');
+    if (parts.length === 1) return { given: '', family: parts[0] };
+    const last = parts[parts.length - 1];
+    if (parts.length === 2 && /^[A-Z]{1,4}$/.test(last)){
+      // PubMed-style "Family INITIALS", e.g. "Zischke C"
+      return { family: parts[0], given: last.split('').join('. ') + '.' };
+    }
+    // "First Middle Last" order (Semantic Scholar / arXiv style)
+    return { given: parts.slice(0, -1).join(' '), family: last };
+  }
+
+  function splitClaimRefPairs(raw){
+    const text = raw.trim();
+    if (!text) return [];
+    const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+    return blocks.map(block => {
+      const lines = block.split(/\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length <= 1) return { claim: null, ref: lines[0] || '' };
+      const claim = lines[0];
+      const ref = lines.slice(1).join(' ');
+      return { claim, ref };
+    }).filter(p => p.ref);
+  }
+
+  /* ---------- document upload: parsing helpers ---------- */
+
+  function guessFirstAuthorSurname(ref){
+    if (!ref) return null;
+    const yearIdx = ref.search(/\(?\b(19|20)\d{2}\b/);
+    const head = (yearIdx > -1 ? ref.slice(0, yearIdx) : ref.slice(0, 60)).trim();
+    const cleaned = head.replace(/^\s*(\[\d+\]|\(\d+\)|\d{1,3}\.)\s*/, '');
+    const m = cleaned.match(/^[A-Z][A-Za-zÀ-ɏ'\-]+/);
+    return m ? m[0] : null;
+  }
+
+  function splitBodyAndReferences(rawText){
+    const lines = rawText.split(/\n/);
+    const headingRe = /^\s*\**\s*(\d{1,2}[.)]\s*)?(references|bibliography|works cited|literature cited)\s*\**\s*$/i;
+    let idx = -1;
+    for (let i = lines.length - 1; i >= 0; i--){
+      if (headingRe.test(lines[i])){ idx = i; break; }
+    }
+    if (idx === -1) return { body: rawText, refsRaw: '', found: false };
+    return {
+      body: lines.slice(0, idx).join('\n'),
+      refsRaw: lines.slice(idx + 1).join('\n'),
+      found: true
+    };
+  }
+
+  function expandNumberedMarker(marker){
+    const nums = new Set();
+    marker.split(',').forEach(part => {
+      part = part.trim();
+      const range = part.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+      if (range){
+        const a = parseInt(range[1], 10), b = parseInt(range[2], 10);
+        if (b - a < 200){ for (let n = a; n <= b; n++) nums.add(n); }
+      } else if (/^\d+$/.test(part)){
+        nums.add(parseInt(part, 10));
       }
-    }catch(e){}
+    });
+    return Array.from(nums);
   }
-  async function loadPosition(key){
-    try{
-      if(!window.storage) return null;
-      const r = await window.storage.get('pos:'+key);
-      if(r && r.value) return JSON.parse(r.value);
-    }catch(e){}
+
+  function splitAuthorYearMarker(marker){
+    return marker.split(';').map(s => s.trim()).filter(Boolean).map(entry => {
+      const yearMatch = entry.match(/(\d{4}[a-z]?)\s*$/);
+      const year = yearMatch ? yearMatch[1] : null;
+      let namePart = yearMatch ? entry.slice(0, yearMatch.index).replace(/,\s*$/, '').trim() : entry.trim();
+      namePart = namePart.replace(/\s+et al\.?\s*$/i, '').trim();
+      const surname = (namePart.split(/\s+(?:&|and)\s+/i)[0] || namePart).trim();
+      return { surname, year };
+    });
+  }
+
+  function findEnclosingSentence(paraText, matchStart, matchEnd){
+    const before = paraText.slice(0, matchStart);
+    const after = paraText.slice(matchEnd);
+    const startBreaks = [...before.matchAll(/[.?!]\s+(?=[A-Z(\[])/g)];
+    const start = startBreaks.length ? startBreaks[startBreaks.length - 1].index + startBreaks[startBreaks.length - 1][0].length : 0;
+    const endBreak = after.match(/[.?!](\s+[A-Z(\[]|\s*$)/);
+    const end = endBreak ? matchEnd + endBreak.index + 1 : paraText.length;
+    return paraText.slice(start, end).trim();
+  }
+
+  const NUMBERED_MARKER_RE = /\[(\d{1,3}(?:\s*[-–,]\s*\d{1,3})*)\]/g;
+  const AUTHORYEAR_MARKER_RE = /\(([A-Z][A-Za-zÀ-ɏ'\-]+(?:\s+(?:et al\.?|&|and)\s+[A-Za-zÀ-ɏ'\-]*)?,?\s*\d{4}[a-z]?(?:\s*;\s*[A-Z][A-Za-zÀ-ɏ'\-]+(?:\s+(?:et al\.?|&|and)\s+[A-Za-zÀ-ɏ'\-]*)?,?\s*\d{4}[a-z]?)*)\)/g;
+
+  function detectCitationInstances(paragraphs, refEntries){
+    const instances = [];
+    let totalMarkers = 0;
+    let spanCounter = 0;
+    paragraphs.forEach((para, paraIndex) => {
+      const raw = [];
+      let m;
+      NUMBERED_MARKER_RE.lastIndex = 0;
+      while ((m = NUMBERED_MARKER_RE.exec(para))){
+        raw.push({ start: m.index, end: m.index + m[0].length, text: m[0], kind: 'num', payload: m[1] });
+      }
+      AUTHORYEAR_MARKER_RE.lastIndex = 0;
+      while ((m = AUTHORYEAR_MARKER_RE.exec(para))){
+        raw.push({ start: m.index, end: m.index + m[0].length, text: m[0], kind: 'ay', payload: m[1] });
+      }
+      raw.sort((a, b) => a.start - b.start);
+      const spans = [];
+      let lastEnd = -1;
+      raw.forEach(r => { if (r.start >= lastEnd){ spans.push(r); lastEnd = r.end; } });
+
+      spans.forEach(span => {
+        totalMarkers++;
+        const spanId = `p${paraIndex}-${spanCounter++}`;
+        let refIndexes = [];
+        if (span.kind === 'num'){
+          refIndexes = expandNumberedMarker(span.payload).map(n => n - 1).filter(idx => refEntries[idx]);
+        } else {
+          splitAuthorYearMarker(span.payload).forEach(p => {
+            if (!p.year || !p.surname) return;
+            const idx = refEntries.findIndex(r => r.year && r.surname &&
+              r.year.slice(0, 4) === p.year.slice(0, 4) &&
+              r.surname.toLowerCase() === p.surname.toLowerCase());
+            if (idx !== -1) refIndexes.push(idx);
+          });
+        }
+        if (refIndexes.length === 0) return;
+        const claim = findEnclosingSentence(para, span.start, span.end);
+        refIndexes.forEach(refIndex => {
+          instances.push({ paraIndex, start: span.start, end: span.end, marker: span.text, spanId, claim, refIndex });
+        });
+      });
+    });
+    return { instances, matchedCount: instances.length, totalMarkers };
+  }
+
+  function buildPairsFromUpload(doc){
+    const claimByRef = {};
+    doc.instances.forEach(inst => {
+      if (!(inst.refIndex in claimByRef)) claimByRef[inst.refIndex] = inst.claim;
+    });
+    return doc.refEntries.map((r, idx) => ({ claim: claimByRef[idx] || null, ref: r.raw }));
+  }
+
+  /* ---------- document upload: file reading ---------- */
+
+  function loadScript(src){
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[data-dyn-src="${src}"]`)){ resolve(); return; }
+      const s = document.createElement('script');
+      s.src = src; s.async = true; s.dataset.dynSrc = src;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Failed to load ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureMammoth(){
+    if (window.mammoth) return;
+    await loadScript('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js');
+    if (!window.mammoth) throw new Error('.docx reader failed to load — check your connection and try again, or paste the text directly instead.');
+  }
+
+  async function ensurePdfJs(){
+    if (window.pdfjsLib) return;
+    await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
+    if (!window.pdfjsLib) throw new Error('PDF reader failed to load — check your connection and try again, or paste the text directly instead.');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
+
+  async function extractTextFromFile(file){
+    const name = (file.name || '').toLowerCase();
+    if (name.endsWith('.txt') || file.type === 'text/plain'){
+      return await file.text();
+    }
+    if (name.endsWith('.docx')){
+      await ensureMammoth();
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await window.mammoth.extractRawText({ arrayBuffer });
+      return result.value;
+    }
+    if (name.endsWith('.pdf')){
+      await ensurePdfJs();
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let text = '';
+      for (let p = 1; p <= pdf.numPages; p++){
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        text += content.items.map(it => it.str).join(' ') + '\n\n';
+      }
+      return text;
+    }
+    throw new Error('Unsupported file type — please upload a .txt, .docx, or .pdf file.');
+  }
+
+  function stripJats(s){
+    if (!s) return null;
+    const cleaned = String(s).replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    return cleaned || null;
+  }
+
+  function relevanceHeuristic(claim, rec){
+    if (!claim || !rec) return null;
+    const text = rec.abstract || rec.title || '';
+    if (!text) return null;
+    const claimTokens = new Set(tokenize(claim));
+    const textTokens = tokenize(text);
+    if (claimTokens.size === 0 || textTokens.length === 0) return null;
+    const seen = new Set();
+    let matched = 0;
+    for (const t of textTokens){ if (claimTokens.has(t) && !seen.has(t)){ matched++; seen.add(t); } }
+    const score = matched / claimTokens.size;
+    return { score, basis: rec.abstract ? 'abstract' : 'title-only' };
+  }
+
+  function classifyRelevance(rel){
+    if (!rel) return { tier: 'unknown', label: "No abstract available — can't assess overlap" };
+    if (rel.basis === 'title-only'){
+      return { tier: 'unknown', label: 'Title only — abstract unavailable, overlap not meaningful' };
+    }
+    if (rel.score >= 0.35) return { tier: 'high', label: 'High Topic Overlap' };
+    if (rel.score >= 0.15) return { tier: 'moderate', label: 'Moderate Topic Overlap' };
+    return { tier: 'low', label: 'Low Topic Overlap — check by hand' };
+  }
+
+  function buildRelevancePrompt(claim, rec){
+    const context = rec.abstract
+      ? `Abstract: ${rec.abstract}`
+      : `Title: ${rec.title || '(no title)'}${rec.journal ? ' — ' + rec.journal : ''}`;
+    return `You are checking whether a cited source actually supports a claim it was cited for.\n\nClaim: "${claim}"\n\nCited source (${rec.title || 'untitled'}):\n${context}\n\nBased only on the text above, does this source support the claim? Reply with strict JSON only, no other text, no markdown fences: {"verdict":"supports"|"contradicts"|"unrelated"|"uncertain","reason":"<one short sentence>"}`;
+  }
+
+  function parseVerdictJson(text){
+    const match = (text || '').match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Could not parse AI response');
+    return JSON.parse(match[0]);
+  }
+
+  async function fetchJsonOrThrow(url, options, providerLabel){
+    const res = await fetch(url, options);
+    if (!res.ok){
+      let detail = '';
+      try{
+        const errBody = await res.json();
+        detail = (errBody && errBody.error && (errBody.error.message || errBody.error)) || '';
+        if (typeof detail !== 'string') detail = JSON.stringify(detail);
+      } catch(e){ /* ignore */ }
+      throw new Error(`${providerLabel} API ${res.status}${detail ? ': ' + detail : ''}`);
+    }
+    return res.json();
+  }
+
+  async function callAnthropicRelevance(claim, rec, apiKey, model){
+    const prompt = buildRelevancePrompt(claim, rec);
+    const data = await fetchJsonOrThrow('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: model || 'claude-3-5-haiku-latest',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    }, 'Anthropic');
+    const text = (data.content && data.content[0] && data.content[0].text) || '';
+    return parseVerdictJson(text);
+  }
+
+  async function callOpenAIRelevance(claim, rec, apiKey, model){
+    const prompt = buildRelevancePrompt(claim, rec);
+    const data = await fetchJsonOrThrow('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model || 'gpt-4o-mini',
+        max_tokens: 200,
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'user', content: prompt }]
+      })
+    }, 'OpenAI');
+    const text = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    return parseVerdictJson(text);
+  }
+
+  async function callGeminiRelevance(claim, rec, apiKey, model){
+    const prompt = buildRelevancePrompt(claim, rec);
+    const m = model || 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const data = await fetchJsonOrThrow(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 200 }
+      })
+    }, 'Gemini');
+    const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
+      data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
+      data.candidates[0].content.parts[0].text) || '';
+    return parseVerdictJson(text);
+  }
+
+  async function callGroqRelevance(claim, rec, apiKey, model){
+    const prompt = buildRelevancePrompt(claim, rec);
+    const data = await fetchJsonOrThrow('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model || 'llama-3.1-8b-instant',
+        max_tokens: 200,
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'user', content: prompt }]
+      })
+    }, 'Groq');
+    const text = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    return parseVerdictJson(text);
+  }
+
+  const AI_PROVIDERS = {
+    anthropic: { label: 'Anthropic (Claude)', keyPlaceholder: 'sk-ant-… (your Anthropic API key)', defaultModel: 'claude-3-5-haiku-latest', call: callAnthropicRelevance },
+    openai:    { label: 'OpenAI (GPT)',        keyPlaceholder: 'sk-… (your OpenAI API key)',        defaultModel: 'gpt-4o-mini',              call: callOpenAIRelevance },
+    gemini:    { label: 'Google (Gemini)',     keyPlaceholder: 'AIza… (your Gemini API key)',        defaultModel: 'gemini-1.5-flash',         call: callGeminiRelevance },
+    groq:      { label: 'Groq',                keyPlaceholder: 'gsk_… (your Groq API key)',          defaultModel: 'llama-3.1-8b-instant',     call: callGroqRelevance }
+  };
+
+  function splitReferences(raw){
+    const text = raw.trim();
+    if (!text) return [];
+    const numberedPattern = /^\s*(\[\d+\]|\(\d+\)|\d{1,3}\.)\s+/;
+    const lines = text.split(/\n/);
+    const numberedLines = lines.filter(l => numberedPattern.test(l));
+    if (numberedLines.length >= 2){
+      const entries = [];
+      let current = '';
+      for (const line of lines){
+        if (numberedPattern.test(line)){
+          if (current.trim()) entries.push(current.trim());
+          current = line.replace(numberedPattern, '');
+        } else {
+          current += ' ' + line.trim();
+        }
+      }
+      if (current.trim()) entries.push(current.trim());
+      return entries.map(e => e.trim()).filter(Boolean);
+    }
+    if (/\n\s*\n/.test(text)){
+      return text.split(/\n\s*\n/).map(s => s.replace(/\n/g,' ').trim()).filter(Boolean);
+    }
+    return lines.map(l => l.trim()).filter(Boolean);
+  }
+
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  async function fetchWithRetry(url, retries, backoff){
+    retries = retries === undefined ? 2 : retries;
+    backoff = backoff === undefined ? 700 : backoff;
+    let lastRes = null;
+    for (let attempt = 0; attempt <= retries; attempt++){
+      lastRes = await fetch(url);
+      if (lastRes.status === 429 && attempt < retries){
+        await sleep(backoff * (attempt + 1));
+        continue;
+      }
+      return lastRes;
+    }
+    return lastRes;
+  }
+
+  function cleanForPubMed(ref){
+    let s = ref;
+    s = s.replace(/10\.\d{4,9}\/[^\s"'<>,;)\]]+/g, ' ');
+    s = s.replace(/;\s*\d+[\d:().\-–]*\b/g, ' ');
+    s = s.replace(/\b\d{4}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{0,2}\b/gi, ' ');
+    s = s.replace(/\bvol(ume)?\.?\s*\d+\b/gi, ' ');
+    s = s.replace(/[();]/g, ' ');
+    s = s.replace(/\s{2,}/g, ' ').trim();
+    return s;
+  }
+
+  async function queryCrossrefDOI(doi){
+    const url = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const item = data.message;
+    if (!item) return null;
+    const authorsList = (item.author||[]).slice(0,12).map(a => ({ given: a.given||'', family: a.family||'' })).filter(a => a.family);
+    return {
+      source: 'Crossref (DOI)',
+      title: Array.isArray(item.title) ? item.title[0] : item.title,
+      year: item['published-print']?.['date-parts']?.[0]?.[0] || item['published-online']?.['date-parts']?.[0]?.[0],
+      authorsList,
+      authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
+      journal: Array.isArray(item['container-title']) ? item['container-title'][0] : item['container-title'],
+      volume: item.volume || null,
+      issue: item.issue || null,
+      pages: item.page || null,
+      doi: item.DOI,
+      url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : null),
+      abstract: stripJats(item.abstract),
+      doiMatch: true
+    };
+  }
+
+  async function queryCrossref(ref){
+    const url = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(ref)}&rows=4`;
+    const res = await fetchWithRetry(url);
+    if (!res.ok) throw new Error('Crossref ' + res.status);
+    const data = await res.json();
+    const items = (data.message && data.message.items) || [];
+    return items.map(item => {
+      const authorsList = (item.author||[]).slice(0,12).map(a => ({ given: a.given||'', family: a.family||'' })).filter(a => a.family);
+      return {
+        source: 'Crossref',
+        title: Array.isArray(item.title) ? item.title[0] : item.title,
+        year: item['published-print']?.['date-parts']?.[0]?.[0] || item['published-online']?.['date-parts']?.[0]?.[0],
+        authorsList,
+        authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
+        journal: Array.isArray(item['container-title']) ? item['container-title'][0] : item['container-title'],
+        volume: item.volume || null,
+        issue: item.issue || null,
+        pages: item.page || null,
+        doi: item.DOI,
+        url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : null),
+        abstract: stripJats(item.abstract)
+      };
+    });
+  }
+
+  async function querySemanticScholar(ref){
+    const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(ref)}&limit=5&fields=title,year,authors,externalIds,venue,abstract`;
+    const res = await fetchWithRetry(url);
+    if (!res.ok) throw new Error('Semantic Scholar ' + res.status);
+    const data = await res.json();
+    const items = data.data || [];
+    return items.map(item => {
+      const authorsList = (item.authors||[]).slice(0,12).map(a => parseAuthorName(a.name)).filter(Boolean);
+      return {
+        source: 'Semantic Scholar',
+        title: item.title,
+        year: item.year,
+        authorsList,
+        authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
+        journal: item.venue,
+        doi: item.externalIds && item.externalIds.DOI,
+        url: (item.externalIds && item.externalIds.DOI) ? `https://doi.org/${item.externalIds.DOI}` : (item.paperId ? `https://www.semanticscholar.org/paper/${item.paperId}` : null),
+        abstract: item.abstract || null
+      };
+    });
+  }
+
+  async function queryPubMed(ref){
+    const term = encodeURIComponent(cleanForPubMed(ref));
+    const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=4&term=${term}`;
+    const searchRes = await fetchWithRetry(searchUrl);
+    if (!searchRes.ok) throw new Error('PubMed search ' + searchRes.status);
+    const searchData = await searchRes.json();
+    const ids = (searchData.esearchresult && searchData.esearchresult.idlist) || [];
+    if (ids.length === 0) return [];
+    const summUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=${ids.join(',')}`;
+    const summRes = await fetchWithRetry(summUrl);
+    if (!summRes.ok) throw new Error('PubMed summary ' + summRes.status);
+    const summData = await summRes.json();
+    return ids.map(id => {
+      const item = summData.result && summData.result[id];
+      if (!item) return null;
+      const authorsList = (item.authors||[]).slice(0,12).map(a => parseAuthorName(a.name)).filter(Boolean);
+      return {
+        source: 'PubMed',
+        title: item.title,
+        year: ((item.pubdate||'').match(/\d{4}/) || [])[0],
+        authorsList,
+        authors: authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
+        journal: item.fulljournalname || item.source,
+        volume: item.volume || null,
+        issue: item.issue || null,
+        pages: item.pages || null,
+        pmid: id,
+        url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`
+      };
+    }).filter(Boolean);
+  }
+
+  async function queryArxiv(ref){
+    const q = cleanForPubMed(ref);
+    const url = `https://export.arxiv.org/api/query?search_query=${encodeURIComponent('all:' + q)}&start=0&max_results=5`;
+    const res = await fetchWithRetry(url);
+    if (!res.ok) throw new Error('arXiv ' + res.status);
+    const text = await res.text();
+    const doc = new DOMParser().parseFromString(text, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) return [];
+    const entries = Array.from(doc.getElementsByTagName('entry'));
+    return entries.map(entry => {
+      const rawTitle = entry.getElementsByTagName('title')[0]?.textContent || '';
+      const title = rawTitle.replace(/\s+/g, ' ').trim();
+      const idUrl = entry.getElementsByTagName('id')[0]?.textContent || null;
+      const published = entry.getElementsByTagName('published')[0]?.textContent || '';
+      const year = (published.match(/^\d{4}/) || [])[0];
+      const authorsList = Array.from(entry.getElementsByTagName('author'))
+        .slice(0,12)
+        .map(a => parseAuthorName(a.getElementsByTagName('name')[0]?.textContent))
+        .filter(Boolean);
+      const authors = authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : '');
+      const abstract = (entry.getElementsByTagName('summary')[0]?.textContent || '').replace(/\s+/g,' ').trim() || null;
+      return { source: 'arXiv', title, year, authorsList, authors, journal: 'arXiv preprint', url: idUrl, abstract };
+    }).filter(c => c.title);
+  }
+
+  async function queryPreprintServer(doi){
+    for (const server of ['biorxiv', 'medrxiv']){
+      try{
+        const url = `https://api.biorxiv.org/details/${server}/${encodeURIComponent(doi)}`;
+        const res = await fetchWithRetry(url, 1, 500);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const item = data.collection && data.collection[0];
+        if (!item || !item.title) continue;
+        const authorsList = (item.authors || '').split(';').slice(0,12).map(s => {
+          const bits = s.trim().split(',');
+          return bits.length >= 2 ? { family: bits[0].trim(), given: bits[1].trim() } : { family: s.trim(), given: '' };
+        }).filter(a => a.family);
+        const authors = authorsList.slice(0,3).map(a => `${a.given} ${a.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : '');
+        return {
+          source: server === 'biorxiv' ? 'bioRxiv' : 'medRxiv',
+          title: item.title,
+          year: (item.date || '').slice(0,4),
+          authorsList,
+          authors,
+          journal: server === 'biorxiv' ? 'bioRxiv preprint' : 'medRxiv preprint',
+          doi: item.doi,
+          url: `https://doi.org/${item.doi}`,
+          abstract: item.abstract || null,
+          doiMatch: true
+        };
+      } catch(e){ /* try next server */ }
+    }
     return null;
   }
 
-  // ---------- Text utilities ----------
-  function splitSentences(text){
-    // Normalize whitespace first
-    text = text.replace(/\r/g,'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
-    if(!text) return [];
-    // Split on sentence enders, keep punctuation
-    const rough = text.match(/[^.!?\n]+[.!?]+(\s+|$)|[^.!?\n]+\n|[^.!?\n]+$/g) || [text];
-    const out = [];
-    for(let s of rough){
-      s = s.trim();
-      if(!s) continue;
-      // further split very long sentences so mobile TTS doesn't choke
-      if(s.length > 260){
-        const parts = s.split(/(?<=[,;:])\s+/);
-        let buf = '';
-        for(const p of parts){
-          if((buf+' '+p).length > 260 && buf){ out.push(buf.trim()); buf = p; }
-          else buf = buf ? buf+' '+p : p;
+  async function verifyReference(ref){
+    const doi = extractDOI(ref);
+    const results = [];
+
+    if (doi){
+      try{
+        const r = await queryCrossrefDOI(doi);
+        if (r) results.push({...r, score: 1});
+      } catch(e){ /* ignore, fall through to text search */ }
+
+      if (/^10\.1101\//.test(doi) && !results.some(r => r.doiMatch)){
+        try{
+          const r2 = await queryPreprintServer(doi);
+          if (r2) results.push({...r2, score: 1});
+        } catch(e){ /* ignore */ }
+      }
+    }
+
+    const providers = [
+      {fn: queryCrossref, name:'Crossref'},
+      {fn: querySemanticScholar, name:'Semantic Scholar'},
+      {fn: queryPubMed, name:'PubMed'},
+      {fn: queryArxiv, name:'arXiv'}
+    ];
+
+    const settled = await Promise.allSettled(providers.map(p => p.fn(ref)));
+    settled.forEach((res, i) => {
+      if (res.status === 'fulfilled'){
+        const candidates = res.value || [];
+        if (candidates.length === 0) return; // source reached fine, just no hits
+        let best = null, bestScore = -1;
+        for (const c of candidates){
+          const score = overlapScore(ref, c.title);
+          if (score > bestScore){ bestScore = score; best = c; }
         }
-        if(buf) out.push(buf.trim());
+        if (best) results.push({...best, score: bestScore});
       } else {
-        out.push(s);
+        results.push({source: providers[i].name, error: true, message: String(res.reason && res.reason.message || res.reason)});
       }
-    }
-    return out.filter(s => s.length > 0);
+    });
+
+    return { ref, doi, results };
   }
 
-  const BOILERPLATE_HEADINGS = /^(references|bibliography|notes|endnotes|footnotes|acknowledg(e)?ments|index|about the author|colophon|further reading)\s*$/i;
-  const FRONTMATTER_TITLES = /^(cover|title page|copyright|dedication|table of contents|contents|half title|also by|praise for|epigraph)\s*$/i;
-
-  function stripBoilerplateSection(text){
-    // If a "References"/"Notes"/etc heading appears, cut everything from there to the end of the chapter.
-    const lines = text.split('\n');
-    let cutAt = -1;
-    for(let i=0;i<lines.length;i++){
-      const line = lines[i].trim();
-      if(line.length < 40 && BOILERPLATE_HEADINGS.test(line)){ cutAt = i; break; }
+  function classify(results){
+    const doiHit = results.find(r => r.doiMatch);
+    if (doiHit) return { verdict:'verified', label:'DOI Confirmed', best: doiHit };
+    const errors = results.filter(r => r.error);
+    const valid = results.filter(r => !r.error && typeof r.score === 'number');
+    if (valid.length === 0){
+      if (errors.length >= 2) return { verdict:'checkfail', label:'Check Failed', best:null };
+      return { verdict:'notfound', label:'No Match Found', best:null };
     }
-    if(cutAt >= 0) return lines.slice(0, cutAt).join('\n');
-    return text;
+    const best = valid.reduce((a,b) => (b.score > a.score ? b : a));
+    if (best.score >= 0.75) return { verdict:'verified', label:'Verified', best };
+    if (best.score >= 0.4) return { verdict:'review', label:'Possible Match', best };
+    return { verdict:'notfound', label:'No Match Found', best };
   }
 
-  function stripPageNumberLines(text){
-    return text.split('\n').filter(line => {
-      const t = line.trim();
-      if(!t) return true;
-      if(/^\d{1,4}$/.test(t)) return false; // bare page number
-      if(/^page\s+\d+/i.test(t)) return false;
+  // ---- Citation formatting (APA / MLA / Chicago / Harvard / Vancouver) ----
+
+  function tidyPunctuation(s){
+    return s.replace(/\s+/g,' ').replace(/\s+([.,;:])/g, '$1').replace(/\.{2,}/g,'.').replace(/,\s*\./g,'.').trim();
+  }
+
+  function initialsOf(given, style){
+    const letters = (given||'').split(/[\s.\-]+/).filter(Boolean).map(s => s[0].toUpperCase());
+    if (style === 'vancouver') return letters.join('');
+    return letters.map(l => l + '.').join(' ');
+  }
+
+  function authorNamePart(a, style){
+    const initials = initialsOf(a.given, style);
+    switch(style){
+      case 'mla':
+        return a.given ? `${a.family}, ${a.given}` : a.family;
+      case 'vancouver':
+        return initials ? `${a.family} ${initials}` : a.family;
+      default: // apa, harvard, chicago
+        return initials ? `${a.family}, ${initials}` : a.family;
+    }
+  }
+
+  function formatAuthors(authorsList, style){
+    if (!authorsList || authorsList.length === 0) return '';
+    const n = authorsList.length;
+    if (style === 'mla'){
+      if (n === 1) return authorNamePart(authorsList[0], style);
+      if (n === 2) return `${authorNamePart(authorsList[0], style)}, and ${authorsList[1].given ? authorsList[1].given + ' ' : ''}${authorsList[1].family}`;
+      return `${authorNamePart(authorsList[0], style)}, et al.`;
+    }
+    if (style === 'vancouver'){
+      const shown = authorsList.slice(0,6).map(a => authorNamePart(a, style));
+      return shown.join(', ') + (n > 6 ? ', et al.' : '');
+    }
+    const names = authorsList.map(a => authorNamePart(a, style));
+    if (n > 3) return `${names[0]}, et al.`;
+    if (n === 1) return names[0];
+    const joiner = style === 'apa' ? '&' : 'and';
+    return names.slice(0,-1).join(', ') + ` ${joiner} ` + names[n-1];
+  }
+
+  function formatCitation(rec, style){
+    const authors = formatAuthors(rec.authorsList, style) || '(author unknown)';
+    const year = rec.year || 'n.d.';
+    const title = rec.title || '';
+    const journal = rec.journal || '';
+    const vol = rec.volume || '';
+    const issue = rec.issue || '';
+    const pages = rec.pages || '';
+    const doiUrl = rec.doi ? `https://doi.org/${rec.doi}` : (rec.url || '');
+    const volIssue = vol ? `${vol}${issue ? '(' + issue + ')' : ''}` : '';
+
+    let out;
+    switch(style){
+      case 'apa':
+        out = `${authors} (${year}). ${title}. ${journal}${volIssue ? ', ' + volIssue : ''}${pages ? ', ' + pages : ''}.${doiUrl ? ' ' + doiUrl : ''}`;
+        break;
+      case 'mla':
+        out = `${authors}. "${title}." ${journal}${vol ? ', vol. ' + vol : ''}${issue ? ', no. ' + issue : ''}, ${year}${pages ? ', pp. ' + pages : ''}.${doiUrl ? ' ' + doiUrl + '.' : ''}`;
+        break;
+      case 'chicago':
+        out = `${authors}. ${year}. "${title}." ${journal} ${volIssue}${pages ? ': ' + pages : ''}.${doiUrl ? ' ' + doiUrl + '.' : ''}`;
+        break;
+      case 'harvard':
+        out = `${authors}, ${year}. ${title}. ${journal}, ${volIssue}${pages ? ', pp.' + pages : ''}.${doiUrl ? ' Available at: ' + doiUrl + '.' : ''}`;
+        break;
+      case 'vancouver':
+        out = `${authors}. ${title}. ${journal}. ${year}${volIssue ? ';' + volIssue : ''}${pages ? ':' + pages : ''}.`;
+        break;
+      default:
+        out = title;
+    }
+    return tidyPunctuation(out);
+  }
+
+  function bibtexKey(rec, idx){
+    const fam = (rec.authorsList && rec.authorsList[0] && rec.authorsList[0].family) || 'ref';
+    const base = (fam + (rec.year || '')).replace(/[^a-zA-Z0-9]/g, '');
+    return (base || 'ref') + idx;
+  }
+
+  function escapeBibtex(s){
+    return String(s || '').replace(/[{}]/g, '');
+  }
+
+  function toBibtexEntry(rec, idx){
+    const authorField = (rec.authorsList||[]).map(a => a.given ? `${a.family}, ${a.given}` : a.family).join(' and ');
+    const lines = [`@article{${bibtexKey(rec, idx)},`];
+    const push = (k, v) => { if (v) lines.push(`  ${k} = {${escapeBibtex(v)}},`); };
+    push('author', authorField);
+    push('title', rec.title);
+    push('journal', rec.journal);
+    push('year', rec.year);
+    push('volume', rec.volume);
+    push('number', rec.issue);
+    push('pages', rec.pages);
+    push('doi', rec.doi);
+    push('url', rec.url);
+    // remove trailing comma on the last field
+    if (lines.length > 1) lines[lines.length-1] = lines[lines.length-1].replace(/,$/,'');
+    lines.push('}');
+    return lines.join('\n');
+  }
+
+  function toRisEntry(rec){
+    const lines = ['TY  - JOUR'];
+    (rec.authorsList||[]).forEach(a => lines.push(`AU  - ${a.given ? a.family + ', ' + a.given : a.family}`));
+    if (rec.title) lines.push(`TI  - ${rec.title}`);
+    if (rec.journal) lines.push(`JO  - ${rec.journal}`);
+    if (rec.year) lines.push(`PY  - ${rec.year}`);
+    if (rec.volume) lines.push(`VL  - ${rec.volume}`);
+    if (rec.issue) lines.push(`IS  - ${rec.issue}`);
+    if (rec.pages){
+      const parts = String(rec.pages).split(/[-–]/);
+      lines.push(`SP  - ${parts[0].trim()}`);
+      if (parts[1]) lines.push(`EP  - ${parts[1].trim()}`);
+    }
+    if (rec.doi) lines.push(`DO  - ${rec.doi}`);
+    if (rec.url) lines.push(`UR  - ${rec.url}`);
+    lines.push('ER  - ');
+    return lines.join('\n');
+  }
+
+  function downloadFile(filename, content, mime){
+    try{
+      const blob = new Blob([content], { type: mime || 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
       return true;
-    }).join('\n');
-  }
-
-  function removeRepeatedLines(pagesLines){
-    // pagesLines: array of arrays of strings (lines per page). Removes lines that
-    // repeat verbatim across a large fraction of pages (running headers/footers).
-    const freq = new Map();
-    pagesLines.forEach(lines => {
-      const uniq = new Set(lines.map(l=>l.trim()).filter(l=>l && l.length<90));
-      uniq.forEach(l => freq.set(l, (freq.get(l)||0)+1));
-    });
-    const total = pagesLines.length;
-    const boiler = new Set();
-    if(total > 4){
-      freq.forEach((count, line) => { if(count >= total*0.4) boiler.add(line); });
+    } catch(e){
+      return false;
     }
-    return pagesLines.map(lines => lines.filter(l => !boiler.has(l.trim())));
   }
 
-  // ---------- Parsers ----------
-  async function parseFile(file){
-    const name = file.name.toLowerCase();
-    if(name.endsWith('.pdf')) return parsePdf(file);
-    if(name.endsWith('.epub')) return parseEpub(file);
-    if(name.endsWith('.docx')) return parseDocx(file);
-    if(name.endsWith('.txt')) return parseTxt(file);
-    throw new Error('Unsupported file type');
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  async function parseTxt(file){
-    const text = await file.text();
-    const title = file.name.replace(/\.txt$/i,'');
-    return chapterizePlainText(title, text);
+  function tiltFor(i){
+    const vals = [-3, 2, -1.5, 3, -2.5, 1.5];
+    return vals[i % vals.length] + 'deg';
   }
 
-  function chapterizePlainText(title, text){
-    const lines = text.split('\n');
-    const heading = /^\s*(chapter|part|book)\s+([0-9]+|[ivxlcdm]+)\b.*$/i;
-    const breaks = [];
-    lines.forEach((line,i) => { if(heading.test(line.trim()) && line.trim().length < 70) breaks.push(i); });
-    const chapters = [];
-    if(breaks.length >= 2){
-      for(let i=0;i<breaks.length;i++){
-        const start = breaks[i];
-        const end = i+1 < breaks.length ? breaks[i+1] : lines.length;
-        const chapTitle = lines[start].trim();
-        const body = lines.slice(start+1, end).join('\n');
-        chapters.push({ title: chapTitle, text: body });
-      }
-    } else {
-      // fallback: chunk by word count
-      const words = text.split(/\s+/);
-      const chunkSize = 3000;
-      let idx = 1;
-      for(let i=0;i<words.length;i+=chunkSize){
-        chapters.push({ title: 'Part '+idx, text: words.slice(i,i+chunkSize).join(' ') });
-        idx++;
-      }
-    }
-    return { title, chapters };
-  }
-
-  async function parseDocx(file){
-    const buf = await file.arrayBuffer();
-    const result = await mammoth.convertToHtml({ arrayBuffer: buf }, {
-      styleMap: ["p[style-name='Heading 1'] => h1:fresh", "p[style-name='Heading 2'] => h1:fresh"]
-    });
-    const doc = new DOMParser().parseFromString(result.value, 'text/html');
-    const chapters = [];
-    let cur = null;
-    Array.from(doc.body.children).forEach(node => {
-      if(/^h1$/i.test(node.tagName)){
-        cur = { title: node.textContent.trim() || ('Chapter '+(chapters.length+1)), text: '' };
-        chapters.push(cur);
-      } else {
-        const t = node.textContent.trim();
-        if(!t) return;
-        if(!cur){ cur = { title: 'Chapter 1', text: '' }; chapters.push(cur); }
-        cur.text += t + '\n\n';
-      }
-    });
-    if(chapters.length === 0){
-      chapters.push({ title: 'Document', text: doc.body.textContent.trim() });
-    }
-    return { title: file.name.replace(/\.docx$/i,''), chapters };
-  }
-
-  async function parseEpub(file){
-    const buf = await file.arrayBuffer();
-    const zip = await JSZip.loadAsync(buf);
-    const containerXml = await zip.file('META-INF/container.xml').async('text');
-    const containerDoc = new DOMParser().parseFromString(containerXml, 'application/xml');
-    const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
-    const opfDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/')+1) : '';
-    const opfText = await zip.file(opfPath).async('text');
-    const opfDoc = new DOMParser().parseFromString(opfText, 'application/xml');
-
-    const bookTitle = (opfDoc.querySelector('metadata > *[*|title], metadata title') || {}).textContent || file.name.replace(/\.epub$/i,'');
-
-    const manifest = {};
-    opfDoc.querySelectorAll('manifest > item').forEach(item => {
-      manifest[item.getAttribute('id')] = {
-        href: opfDir + item.getAttribute('href'),
-        mediaType: item.getAttribute('media-type')
-      };
-    });
-    const spineIds = Array.from(opfDoc.querySelectorAll('spine > itemref')).map(i => i.getAttribute('idref'));
-
-    // Try to build a title lookup from nav/toc
-    const titleByHref = {};
-    const navItem = Object.values(manifest).find(m => m.mediaType === 'application/xhtml+xml' && m.href.match(/nav/i));
-    const ncxItem = Object.values(manifest).find(m => m.mediaType === 'application/x-dtbncx+xml');
-    try{
-      if(navItem && zip.file(navItem.href)){
-        const navText = await zip.file(navItem.href).async('text');
-        const navDoc = new DOMParser().parseFromString(navText, 'text/html');
-        navDoc.querySelectorAll('a[href]').forEach(a => {
-          const href = decodeURIComponent(a.getAttribute('href').split('#')[0]);
-          titleByHref[href] = a.textContent.trim();
-        });
-      } else if(ncxItem && zip.file(ncxItem.href)){
-        const ncxText = await zip.file(ncxItem.href).async('text');
-        const ncxDoc = new DOMParser().parseFromString(ncxText, 'application/xml');
-        ncxDoc.querySelectorAll('navPoint').forEach(np => {
-          const src = np.querySelector('content')?.getAttribute('src');
-          const label = np.querySelector('navLabel > text')?.textContent;
-          if(src && label) titleByHref[decodeURIComponent(src.split('#')[0])] = label.trim();
-        });
-      }
-    }catch(e){ /* toc parsing best-effort */ }
-
-    const chapters = [];
-    for(const id of spineIds){
-      const item = manifest[id];
-      if(!item || !zip.file(item.href)) continue;
-      const html = await zip.file(item.href).async('text');
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      doc.querySelectorAll('script,style').forEach(n=>n.remove());
-      const text = doc.body ? doc.body.textContent.replace(/\n{2,}/g,'\n\n').trim() : '';
-      if(!text || text.length < 20) continue; // skip empty/near-empty spine items (often blank separators)
-      const shortHref = item.href.split('/').pop();
-      let title = titleByHref[item.href] || titleByHref[shortHref];
-      if(!title){
-        const h = doc.querySelector('h1,h2,h3');
-        title = h ? h.textContent.trim() : ('Chapter '+(chapters.length+1));
-      }
-      chapters.push({ title, text });
-    }
-    return { title: bookTitle, chapters };
-  }
-
-  async function parsePdf(file){
-    const buf = await file.arrayBuffer();
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    const pagesLines = []; // array of array-of-lines
-    const pagesMeta = []; // per page: {lines:[{text,size}]}
-
-    for(let p=1; p<=pdf.numPages; p++){
-      const page = await pdf.getPage(p);
-      const content = await page.getTextContent();
-      // group items into lines by y coordinate
-      const rows = [];
-      content.items.forEach(it => {
-        const y = Math.round(it.transform[5]);
-        const size = Math.abs(it.transform[0]) || 1;
-        let row = rows.find(r => Math.abs(r.y - y) < 3);
-        if(!row){ row = { y, size, text: '' }; rows.push(row); }
-        row.text += it.str;
-        row.size = Math.max(row.size, size);
-      });
-      rows.sort((a,b) => b.y - a.y);
-      pagesMeta.push(rows);
-      pagesLines.push(rows.map(r => r.text));
-    }
-
-    const cleanedLines = removeRepeatedLines(pagesLines);
-    // recompute rows with cleaned text but keep sizes aligned by index
-    const avgSize = (() => {
-      let sum=0, n=0;
-      pagesMeta.forEach(rows => rows.forEach(r => { sum+=r.size; n++; }));
-      return n ? sum/n : 10;
-    })();
-
-    // Build full line stream with heading flags
-    const stream = [];
-    pagesMeta.forEach((rows, pIdx) => {
-      const kept = new Set(cleanedLines[pIdx]);
-      rows.forEach(r => {
-        if(!kept.has(r.text)) return;
-        const t = r.text.trim();
-        if(!t) return;
-        const isHeading = t.length < 70 && r.size > avgSize * 1.25 && !/^\d+$/.test(t);
-        stream.push({ text: t, heading: isHeading });
-      });
-    });
-
-    // find heading-based chapter breaks
-    const breakIdx = [];
-    stream.forEach((row,i) => { if(row.heading) breakIdx.push(i); });
-
-    const chapters = [];
-    if(breakIdx.length >= 2){
-      for(let i=0;i<breakIdx.length;i++){
-        const start = breakIdx[i];
-        const end = i+1<breakIdx.length ? breakIdx[i+1] : stream.length;
-        const title = stream[start].text;
-        const body = stream.slice(start+1, end).map(r=>r.text).join('\n');
-        if(body.trim().length > 30) chapters.push({ title, text: body });
-      }
-    } else {
-      // fallback: chunk by pages
-      const perChunk = Math.max(5, Math.ceil(pdf.numPages/12));
-      for(let start=0; start<pagesLines.length; start+=perChunk){
-        const end = Math.min(start+perChunk, pagesLines.length);
-        const body = cleanedLines.slice(start,end).flat().join('\n');
-        chapters.push({ title: 'Pages '+(start+1)+'–'+end, text: body });
-      }
-    }
-    return { title: file.name.replace(/\.pdf$/i,''), chapters };
-  }
-
-  // ---------- Post-process chapters into sentence arrays ----------
-  function finalizeChapters(raw){
-    return raw.chapters.map((c, i) => {
-      let text = c.text;
-      if(skipRefs.checked) text = stripBoilerplateSection(text);
-      text = stripPageNumberLines(text);
-      const isFront = FRONTMATTER_TITLES.test(c.title.trim());
-      const sentences = splitSentences(text);
-      return {
-        title: c.title || ('Chapter '+(i+1)),
-        sentences,
-        skip: skipFront.checked && isFront
-      };
-    }).filter(c => c.sentences.length > 0 || c.skip === false ? true : true);
-  }
-
-  // ---------- Rendering ----------
-  function renderChapterList(){
-    el('bookTitle').textContent = book.title;
-    const activeCount = book.chapters.filter(c=>!c.skip).length;
-    el('bookMeta').textContent = book.chapters.length + ' chapters · ' + activeCount + ' to read';
-    const ul = el('chapterList');
-    ul.innerHTML = '';
-    book.chapters.forEach((c, i) => {
-      const li = document.createElement('li');
-      li.className = (i===curChapter ? 'active ' : '') + (c.skip ? 'skipped' : '');
-      li.innerHTML = '<span>'+escapeHtml(c.title)+'</span><span class="n">'+String(i+1).padStart(2,'0')+'</span>';
-      li.addEventListener('click', () => { jumpToChapter(i); });
-      ul.appendChild(li);
-    });
-  }
-  function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-  function drawDial(fraction){
-    const svg = el('dialSvg');
-    const R = 88, cx=100, cy=100;
-    const ticks = [];
-    const N = 24;
-    for(let i=0;i<N;i++){
-      const a = (i/N) * Math.PI*2 - Math.PI/2;
-      const on = i/N <= fraction;
-      const r1 = R-6, r2 = R;
-      const x1 = cx+r1*Math.cos(a), y1 = cy+r1*Math.sin(a);
-      const x2 = cx+r2*Math.cos(a), y2 = cy+r2*Math.sin(a);
-      ticks.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${on?'#C98A3E':'#33383F'}" stroke-width="3" stroke-linecap="round"/>`);
-    }
-    const needleA = fraction * Math.PI*2 - Math.PI/2;
-    const nx = cx + (R-18)*Math.cos(needleA), ny = cy + (R-18)*Math.sin(needleA);
-    svg.innerHTML = `
-      <circle cx="${cx}" cy="${cy}" r="${R-16}" fill="#1E2227" stroke="#33383F" stroke-width="1"/>
-      ${ticks.join('')}
-      <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#E0A758" stroke-width="3" stroke-linecap="round"/>
-      <circle cx="${cx}" cy="${cy}" r="4" fill="#E0A758"/>
+  function renderCard(i, ref, claim){
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.id = `card-${i}`;
+    el.dataset.verdict = 'pending';
+    el.style.setProperty('--tilt', tiltFor(i));
+    const claimHtml = claim ? `<div class="claim-text"><span class="claim-k">Claim it's cited for</span>${escapeHtml(claim)}</div>` : '';
+    el.innerHTML = `
+      <div class="card-top">
+        <div class="card-index">No. ${String(i+1).padStart(3,'0')}</div>
+        <div class="stamp pending" id="stamp-${i}">Checking…</div>
+      </div>
+      ${claimHtml}
+      <div class="ref-text">${escapeHtml(ref)}</div>
+      <div id="body-${i}"><div class="pending-text">Querying Crossref, PubMed, Semantic Scholar, and arXiv…</div></div>
+      <div id="relevance-${i}"></div>
+      <button class="retry-btn" id="retry-${i}" type="button">↻ Recheck this one</button>
     `;
-    el('dialPct').textContent = Math.round(fraction*100)+'%';
+    return el;
   }
 
-  function updateNowPlaying(){
-    const chap = book.chapters[curChapter];
-    el('npChapter').textContent = chap ? chap.title : '—';
-    el('npSentence').textContent = chap && chap.sentences[curSentence] ? chap.sentences[curSentence] : (chap && chap.skip ? '(skipped section)' : '');
-    const frac = chap && chap.sentences.length ? curSentence / chap.sentences.length : 0;
-    drawDial(frac);
-    renderChapterList();
-    updateMediaSession();
-  }
+  function updateCard(i, verification, claim){
+    const stampEl = document.getElementById(`stamp-${i}`);
+    const bodyEl = document.getElementById(`body-${i}`);
+    const cardEl = document.getElementById(`card-${i}`);
+    const cls = classify(verification.results);
+    if (cardEl) cardEl.dataset.verdict = cls.verdict;
 
-  // ---------- TTS Player ----------
-  let wakeLock = null;
-  async function requestWake(){
-    try{ if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }catch(e){}
-  }
-  function releaseWake(){ try{ wakeLock && wakeLock.release(); wakeLock=null; }catch(e){} }
+    stampEl.classList.remove('pending');
+    stampEl.classList.add(cls.verdict, 'animate');
+    stampEl.textContent = cls.label;
 
-  // Chrome speechSynthesis pause bug workaround
-  setInterval(() => {
-    if(speechSynthesis.speaking && !speechSynthesis.paused){
-      speechSynthesis.pause(); speechSynthesis.resume();
-    }
-  }, 9000);
+    let html = '';
+    const errors = verification.results.filter(r => r.error);
 
-  function currentSentenceText(){
-    const chap = book.chapters[curChapter];
-    if(!chap) return null;
-    return chap.sentences[curSentence] || null;
-  }
-
-  function speakCurrent(){
-    speechSynthesis.cancel();
-    const text = currentSentenceText();
-    if(text == null){
-      advanceChapter(1, true);
-      return;
-    }
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = parseFloat(rateSlider.value);
-    const chosen = voices.find(v => v.name === voiceSelect.value);
-    if(chosen) utt.voice = chosen;
-    utt.onend = () => { if(isPlaying) stepSentence(1, true); };
-    utt.onerror = () => { if(isPlaying) stepSentence(1, true); };
-    speechSynthesis.speak(utt);
-    updateNowPlaying();
-    saveState();
-  }
-
-  function play(){
-    if(!book) return;
-    // if current chapter is a skipped one, hop forward first
-    if(book.chapters[curChapter] && book.chapters[curChapter].skip){ advanceChapter(1, false); }
-    isPlaying = true;
-    el('playBtn').textContent = '❚❚';
-    requestWake();
-    speakCurrent();
-  }
-  function pause(){
-    isPlaying = false;
-    el('playBtn').textContent = '▶';
-    speechSynthesis.cancel();
-    releaseWake();
-  }
-  function togglePlay(){ isPlaying ? pause() : play(); }
-
-  function stepSentence(dir, autoContinue){
-    const chap = book.chapters[curChapter];
-    if(!chap) return;
-    curSentence += dir;
-    if(curSentence < 0){
-      advanceChapter(-1, autoContinue, true);
-      return;
-    }
-    if(curSentence >= chap.sentences.length){
-      advanceChapter(1, autoContinue);
-      return;
-    }
-    if(isPlaying && autoContinue) speakCurrent();
-    else updateNowPlaying();
-    saveState();
-  }
-
-  function advanceChapter(dir, autoContinue, toEnd){
-    let idx = curChapter + dir;
-    while(idx >= 0 && idx < book.chapters.length && book.chapters[idx].skip) idx += dir;
-    if(idx < 0 || idx >= book.chapters.length){
-      pause();
-      return;
-    }
-    curChapter = idx;
-    curSentence = toEnd ? Math.max(0, book.chapters[idx].sentences.length-1) : 0;
-    if(isPlaying && autoContinue !== false) speakCurrent();
-    else updateNowPlaying();
-    saveState();
-  }
-
-  function jumpToChapter(i){
-    if(book.chapters[i].skip) return;
-    curChapter = i; curSentence = 0;
-    if(isPlaying) speakCurrent(); else updateNowPlaying();
-    saveState();
-  }
-
-  // ---------- Media Session (lock-screen controls) ----------
-  function updateMediaSession(){
-    if(!('mediaSession' in navigator) || !book) return;
-    const chap = book.chapters[curChapter];
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: chap ? chap.title : '',
-      artist: book.title,
-      album: 'Backread'
-    });
-    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-    navigator.mediaSession.setActionHandler('play', play);
-    navigator.mediaSession.setActionHandler('pause', pause);
-    navigator.mediaSession.setActionHandler('previoustrack', () => advanceChapter(-1, true));
-    navigator.mediaSession.setActionHandler('nexttrack', () => advanceChapter(1, true));
-    navigator.mediaSession.setActionHandler('seekbackward', () => stepSentence(-1, true));
-    navigator.mediaSession.setActionHandler('seekforward', () => stepSentence(1, true));
-  }
-
-  // ---------- Voices ----------
-  const MALE_NAME_HINT = /\b(david|mark|guy|george|ryan|daniel|oliver|arthur|fred|alex|james|paul|thomas|will|matthew|eric|brian|sean|nathan)\b/i;
-  const FEMALE_NAME_HINT = /\b(zira|samantha|susan|hazel|libby|sonia|karen|victoria|amy|emma|kate|serena|fiona|moira|tessa|shelley|catherine|allison|ava|joanna|salli|kimberly|olivia|amelia)\b/i;
-
-  function classifyVoice(v){
-    const lang = (v.lang||'').toLowerCase();
-    const name = v.name||'';
-    let accent = 'Other';
-    if(lang.startsWith('en-us') || /us english|united states/i.test(name)) accent = 'American';
-    else if(lang.startsWith('en-gb') || /uk english|united kingdom|british/i.test(name)) accent = 'British';
-    else if(lang.startsWith('en')) accent = 'Other English';
-
-    let gender = 'Unknown';
-    if(/\bmale\b/i.test(name) && !/female/i.test(name)) gender = 'Male';
-    else if(/\bfemale\b/i.test(name)) gender = 'Female';
-    else if(MALE_NAME_HINT.test(name)) gender = 'Male';
-    else if(FEMALE_NAME_HINT.test(name)) gender = 'Female';
-
-    // Prefer higher-quality "Natural"/"Online"/neural voices when available (mainly Edge)
-    const quality = /natural|online|neural|premium|enhanced/i.test(name) ? 2 : 1;
-    return { accent, gender, quality };
-  }
-
-  let voiceMeta = []; // parallel array to `voices`, from classifyVoice
-
-  function populateVoices(){
-    const all = speechSynthesis.getVoices();
-    voices = all.filter(v => v.lang.toLowerCase().startsWith('en'));
-    if(voices.length === 0) voices = all;
-    voiceMeta = voices.map(classifyVoice);
-
-    // --- advanced full list ---
-    const sel = el('voiceSelect');
-    sel.innerHTML = '';
-    voices.forEach(v => {
-      const o = document.createElement('option');
-      o.value = v.name; o.textContent = v.name + ' (' + v.lang + ')';
-      sel.appendChild(o);
-    });
-
-    // --- accent select: only offer accents that actually exist on this device ---
-    const accentOrder = ['American','British','Other English','Other'];
-    const accentsPresent = accentOrder.filter(a => voiceMeta.some(m => m.accent === a));
-    const accentSel = el('accentSelect');
-    const prevAccent = accentSel.value;
-    accentSel.innerHTML = '';
-    accentsPresent.forEach(a => {
-      const o = document.createElement('option'); o.value = a; o.textContent = a; accentSel.appendChild(o);
-    });
-    if(accentsPresent.includes(prevAccent)) accentSel.value = prevAccent;
-    else if(accentsPresent.includes('American')) accentSel.value = 'American';
-
-    populateGenderOptions();
-
-    if(window.__preferredVoiceName && voices.some(v=>v.name===window.__preferredVoiceName)){
-      sel.value = window.__preferredVoiceName;
-      syncSelectorsToVoice(window.__preferredVoiceName);
-    } else {
-      applyBestVoiceForSelectors();
-    }
-    updateVoiceQualityHint();
-  }
-  speechSynthesis.onvoiceschanged = populateVoices;
-
-  function populateGenderOptions(){
-    const accent = el('accentSelect').value;
-    const gendersPresent = ['Male','Female','Unknown'].filter(g =>
-      voiceMeta.some((m,i) => m.accent === accent && m.gender === g)
-    );
-    const genderSel = el('genderSelect');
-    const prevGender = genderSel.value;
-    genderSel.innerHTML = '';
-    gendersPresent.forEach(g => {
-      const o = document.createElement('option');
-      o.value = g; o.textContent = (g === 'Unknown' ? 'Any voice' : g);
-      genderSel.appendChild(o);
-    });
-    if(gendersPresent.includes(prevGender)) genderSel.value = prevGender;
-  }
-
-  function bestVoiceFor(accent, gender){
-    let candidates = voices.map((v,i)=>({v,m:voiceMeta[i],i})).filter(c => c.m.accent === accent);
-    if(gender && gender !== 'Unknown'){
-      const withGender = candidates.filter(c => c.m.gender === gender);
-      if(withGender.length) candidates = withGender;
-    }
-    if(!candidates.length) candidates = voices.map((v,i)=>({v,m:voiceMeta[i],i}));
-    candidates.sort((a,b) => b.m.quality - a.m.quality);
-    return candidates[0] ? candidates[0].v : null;
-  }
-
-  function applyBestVoiceForSelectors(){
-    const accent = el('accentSelect').value;
-    const gender = el('genderSelect').value;
-    const best = bestVoiceFor(accent, gender);
-    if(best){
-      el('voiceSelect').value = best.name;
-      window.__preferredVoiceName = best.name;
-    }
-  }
-
-  function syncSelectorsToVoice(name){
-    const idx = voices.findIndex(v => v.name === name);
-    if(idx < 0) return;
-    const m = voiceMeta[idx];
-    if([...el('accentSelect').options].some(o=>o.value===m.accent)) el('accentSelect').value = m.accent;
-    populateGenderOptions();
-    if([...el('genderSelect').options].some(o=>o.value===m.gender)) el('genderSelect').value = m.gender;
-  }
-
-  function updateVoiceQualityHint(){
-    const anyNatural = voiceMeta.some(m => m.quality === 2);
-    el('voiceQualityHint').textContent = anyNatural
-      ? ''
-      : 'For noticeably more natural-sounding voices on Windows, try opening this page in Microsoft Edge — it offers free "Natural"-quality voices the standard Windows voices don\u2019t.';
-  }
-
-  el('accentSelect').addEventListener('change', () => {
-    populateGenderOptions();
-    applyBestVoiceForSelectors();
-    if(isPlaying) speakCurrent();
-    saveState();
-  });
-  el('genderSelect').addEventListener('change', () => {
-    applyBestVoiceForSelectors();
-    if(isPlaying) speakCurrent();
-    saveState();
-  });
-
-  // ---------- Wiring ----------
-  const fileInput = el('fileInput');
-  const uploader = el('uploader');
-  const rateSlider = el('rateSlider'), rateVal = el('rateVal');
-  const voiceSelect = el('voiceSelect');
-  const skipRefs = el('skipRefs'), skipFront = el('skipFront');
-
-  ['dragenter','dragover'].forEach(ev => uploader.addEventListener(ev, e => { e.preventDefault(); uploader.classList.add('drag'); }));
-  ['dragleave','drop'].forEach(ev => uploader.addEventListener(ev, e => { e.preventDefault(); uploader.classList.remove('drag'); }));
-  uploader.addEventListener('drop', e => {
-    const f = e.dataTransfer.files[0];
-    if(f) loadFile(f);
-  });
-  fileInput.addEventListener('change', e => { if(e.target.files[0]) loadFile(e.target.files[0]); });
-
-  async function loadFile(file){
-    pause();
-    setStatus('Reading "'+file.name+'" …');
-    try{
-      const raw = await parseFile(file);
-      if(!raw.chapters.length) throw new Error('No readable text found in this file.');
-      book = { title: raw.title, chapters: finalizeChapters(raw) };
-      bookKey = (file.name + ':' + file.size);
-      curChapter = 0; curSentence = 0;
-      // skip forward past any front-matter to first real chapter
-      while(curChapter < book.chapters.length && book.chapters[curChapter].skip) curChapter++;
-      if(curChapter >= book.chapters.length) curChapter = 0;
-
-      const savedPos = await loadPosition(bookKey);
-      if(savedPos && book.chapters[savedPos.curChapter]){
-        curChapter = savedPos.curChapter;
-        curSentence = savedPos.curSentence || 0;
+    if (cls.best){
+      const b = cls.best;
+      html += '<div class="meta">';
+      if (b.title) html += `<div class="k">Title</div><div class="v">${escapeHtml(b.title)}</div>`;
+      if (b.authors) html += `<div class="k">Authors</div><div class="v">${escapeHtml(b.authors)}</div>`;
+      if (b.year) html += `<div class="k">Year</div><div class="v">${escapeHtml(b.year)}</div>`;
+      if (b.journal) html += `<div class="k">Venue</div><div class="v">${escapeHtml(b.journal)}</div>`;
+      html += `<div class="k">Source</div><div class="v">${escapeHtml(b.source)}${b.url ? ` — <a href="${escapeHtml(b.url)}" target="_blank" rel="noopener">view record</a>` : ''}</div>`;
+      html += '</div>';
+      if (typeof b.score === 'number'){
+        const pct = Math.round(b.score * 100);
+        html += `<div class="score-row"><div class="score-track"><div class="score-fill" style="width:${pct}%"></div></div><div class="score-label">${pct}% title match</div></div>`;
       }
+    } else if (cls.verdict === 'checkfail'){
+      html += '<div class="pending-text">Couldn\'t reach enough sources to check this one just now (likely a rate limit or network hiccup) — this is not a verdict either way. Try rechecking.</div>';
+    } else {
+      html += '<div class="pending-text">No matching record found in Crossref, PubMed, Semantic Scholar, or arXiv. This does not confirm the reference is fabricated — it can also mean a very new paper, a non-English title, or a source these indexes under-cover. Worth a manual check before concluding anything.</div>';
+    }
 
-      el('workspace').hidden = false;
-      setStatus('Loaded "'+book.title+'" — '+book.chapters.length+' chapters.');
-      updateNowPlaying();
-    }catch(err){
-      console.error(err);
-      setStatus('Could not read that file: '+err.message, true);
+    if (errors.length){
+      html += `<div class="error-note">Unreachable: ${errors.map(e => escapeHtml(e.source)).join(', ')}</div>`;
+    }
+
+    bodyEl.innerHTML = html;
+
+    const relEl = document.getElementById(`relevance-${i}`);
+    if (relEl){
+      if (claim && cls.best){
+        const rel = relevanceHeuristic(claim, cls.best);
+        const relCls = classifyRelevance(rel);
+        let relHtml = `<div class="relevance-row"><span class="relevance-badge ${relCls.tier}">${escapeHtml(relCls.label)}</span>`;
+        if (rel && rel.basis === 'abstract'){
+          relHtml += `<div class="relevance-note">${Math.round(Math.min(rel.score,1)*100)}% of the claim's key words appear in the matched source's abstract. This is a keyword-overlap signal, not a semantic judgment — use the AI check below for an actual read.</div>`;
+        } else {
+          relHtml += `<div class="relevance-note">No abstract was returned by the matched source, so overlap could only be checked against the title, which isn't meaningful enough to score. Try the AI check below, or read the source directly.</div>`;
+        }
+        relHtml += `<div class="ai-verdict" id="ai-verdict-${i}"></div>`;
+        relHtml += '</div>';
+        relEl.innerHTML = relHtml;
+      } else {
+        relEl.innerHTML = '';
+      }
+    }
+
+    const retryBtn = document.getElementById(`retry-${i}`);
+    if (retryBtn) retryBtn.classList.add('show');
+  }
+
+  async function runWithConcurrency(items, worker, concurrency, onEach){
+    let idx = 0;
+    async function next(){
+      while (idx < items.length){
+        const i = idx++;
+        const result = await worker(items[i], i);
+        onEach(i, result);
+        await sleep(150);
+      }
+    }
+    const runners = Array.from({length: Math.min(concurrency, items.length)}, next);
+    await Promise.all(runners);
+  }
+
+  const refsInput = document.getElementById('refsInput');
+  const checkBtn = document.getElementById('checkBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const refCount = document.getElementById('refCount');
+  const emptyNote = document.getElementById('emptyNote');
+  const resultsEl = document.getElementById('results');
+  const summaryEl = document.getElementById('summary');
+  const cVerified = document.getElementById('cVerified');
+  const cReview = document.getElementById('cReview');
+  const cNotfound = document.getElementById('cNotfound');
+  const copyBtn = document.getElementById('copyBtn');
+  const filterClearEl = document.getElementById('filterClear');
+  const confirmedPanel = document.getElementById('confirmedPanel');
+  const styleTabsEl = document.getElementById('styleTabs');
+  const citationListEl = document.getElementById('citationList');
+  const copyCitationsBtn = document.getElementById('copyCitationsBtn');
+  const exportBibtexBtn = document.getElementById('exportBibtexBtn');
+  const exportRisBtn = document.getElementById('exportRisBtn');
+  const modeToggle = document.getElementById('modeToggle');
+  const modeNote = document.getElementById('modeNote');
+  const intakeLabelText = document.getElementById('intakeLabelText');
+  const intakeHint = document.getElementById('intakeHint');
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const runAiCheckBtn = document.getElementById('runAiCheckBtn');
+  const aiStatus = document.getElementById('aiStatus');
+  const aiProviderSelect = document.getElementById('aiProviderSelect');
+  const aiModelInput = document.getElementById('aiModelInput');
+
+  function applyAiProviderDefaults(){
+    const provider = AI_PROVIDERS[aiProviderSelect.value] || AI_PROVIDERS.anthropic;
+    apiKeyInput.placeholder = provider.keyPlaceholder;
+    aiModelInput.placeholder = provider.defaultModel;
+    aiModelInput.value = provider.defaultModel;
+  }
+  applyAiProviderDefaults();
+  aiProviderSelect.addEventListener('change', applyAiProviderDefaults);
+
+  const textIntakeLabel = document.getElementById('textIntakeLabel');
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const uploadBrowseBtn = document.getElementById('uploadBrowseBtn');
+  const uploadFilenameEl = document.getElementById('uploadFilename');
+  const uploadStatusEl = document.getElementById('uploadStatus');
+  const docPanel = document.getElementById('docPanel');
+  const docPanelBody = document.getElementById('docPanelBody');
+
+  let lastRun = [];
+  let currentRefs = [];
+  let currentClaims = [];
+  let activeFilter = null;
+  let currentStyle = 'apa';
+  let currentMode = 'refs';
+  let uploadedDoc = null;
+
+  const MODE_CONFIG = {
+    refs: {
+      label: 'Bibliography intake',
+      note: 'Checks that each reference exists and resolves to a real record.',
+      hint: 'Works best with full references (authors, title, year). One entry per line, or a numbered list — wrapped lines are merged automatically.',
+      placeholder: 'Paste references here, one per line — or as a numbered list, e.g.\n\n1. Smith J, Doe A. Effects of X on Y. Journal of Examples. 2021;12(3):45-59.\n2. Lee K. A totally fabricated study of nothing. Nature Fake Reviews. 2023.\n3. https://doi.org/10.1038/s41586-021-03819-2',
+      buttonLabel: 'File & Verify →'
+    },
+    claims: {
+      label: 'Claim + reference intake',
+      note: "Also checks whether the source actually supports the claim it's cited for, not just that it exists.",
+      hint: 'Each pair is two lines: the claim first, then its reference — with a blank line between pairs.',
+      placeholder: 'Paste claim + reference pairs, separated by a blank line, e.g.\n\nMetformin reduces cardiovascular mortality in people with type 2 diabetes by roughly 30%.\nSmith J, Doe A. Effects of metformin on cardiovascular outcomes. Journal of Examples. 2021;12(3):45-59.\n\nAI models trained on synthetic data show no measurable degradation in accuracy.\nLee K. A totally fabricated study of nothing. Nature Fake Reviews. 2023.',
+      buttonLabel: 'File & Verify →'
+    },
+    upload: {
+      label: 'Document upload',
+      note: "Upload your manuscript and I'll find the reference list and every in-text citation automatically, check them, and highlight them right in your document.",
+      hint: 'Works with a .txt, .docx, or .pdf that has a clear "References" (or "Bibliography") heading, and in-text citations in numbered [12] or author-year (Smith, 2021) style.',
+      placeholder: '',
+      buttonLabel: 'Check document →'
+    }
+  };
+
+  modeToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('.mode-btn');
+    if (!btn) return;
+    currentMode = btn.dataset.mode;
+    modeToggle.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    const cfg = MODE_CONFIG[currentMode];
+    modeNote.textContent = cfg.note;
+    intakeLabelText.textContent = cfg.label;
+    intakeHint.textContent = cfg.hint;
+    refsInput.placeholder = cfg.placeholder;
+    checkBtn.textContent = cfg.buttonLabel;
+    const isUpload = currentMode === 'upload';
+    textIntakeLabel.style.display = isUpload ? 'none' : 'flex';
+    refsInput.style.display = isUpload ? 'none' : '';
+    uploadZone.style.display = isUpload ? '' : 'none';
+    uploadStatusEl.style.display = (isUpload && uploadStatusEl.textContent) ? '' : 'none';
+    docPanel.classList.remove('show');
+    if (!isUpload) refsInput.dispatchEvent(new Event('input'));
+  });
+
+  /* ---------- document upload wiring ---------- */
+
+  async function handleFile(file){
+    uploadFilenameEl.textContent = file.name;
+    uploadStatusEl.style.display = '';
+    uploadStatusEl.textContent = 'Reading file…';
+    uploadedDoc = null;
+    docPanel.classList.remove('show');
+    try{
+      const rawText = await extractTextFromFile(file);
+      const { body, refsRaw, found } = splitBodyAndReferences(rawText);
+      if (!found || !refsRaw.trim()){
+        uploadStatusEl.textContent = 'Couldn\'t find a "References" / "Bibliography" heading in this file, so I can\'t auto-split it. Try pasting your bibliography directly using the other two modes instead.';
+        return;
+      }
+      const refEntries = splitReferences(refsRaw).map((raw, idx) => ({
+        index: idx, raw, surname: guessFirstAuthorSurname(raw), year: extractYear(raw)
+      }));
+      if (refEntries.length === 0){
+        uploadStatusEl.textContent = 'Found a References heading but couldn\'t split it into individual entries. Try pasting your bibliography directly instead.';
+        return;
+      }
+      const paragraphs = body.split(/\n{2,}/).map(p => p.replace(/\s+/g, ' ').trim()).filter(Boolean);
+      const { instances, matchedCount, totalMarkers } = detectCitationInstances(paragraphs, refEntries);
+      uploadedDoc = { paragraphs, refEntries, instances };
+      const linkedRefCount = new Set(instances.map(i => i.refIndex)).size;
+      uploadStatusEl.textContent = `Parsed ${paragraphs.length} paragraph${paragraphs.length===1?'':'s'} · found ${refEntries.length} reference${refEntries.length===1?'':'s'} · ${totalMarkers} in-text citation marker${totalMarkers===1?'':'s'} detected, ${matchedCount} linked to a reference (${linkedRefCount} unique reference${linkedRefCount===1?'':'s'} actually cited). Click "Check document" below.`;
+    } catch(e){
+      uploadedDoc = null;
+      uploadStatusEl.textContent = `Couldn't read that file: ${(e && e.message) || e}`;
     }
   }
 
-  el('playBtn').addEventListener('click', togglePlay);
-  el('backBtn').addEventListener('click', () => stepSentence(-1, isPlaying));
-  el('fwdBtn').addEventListener('click', () => stepSentence(1, isPlaying));
-  el('prevChapBtn').addEventListener('click', () => advanceChapter(-1, isPlaying));
-  el('nextChapBtn').addEventListener('click', () => advanceChapter(1, isPlaying));
-
-  rateSlider.addEventListener('input', () => {
-    rateVal.textContent = parseFloat(rateSlider.value).toFixed(2)+'×';
-    if(isPlaying) speakCurrent();
-    saveState();
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (f) handleFile(f);
   });
-  voiceSelect.addEventListener('change', () => {
-    window.__preferredVoiceName = voiceSelect.value;
-    syncSelectorsToVoice(voiceSelect.value);
-    if(isPlaying) speakCurrent();
-    saveState();
+  uploadBrowseBtn.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleFile(f);
   });
-  skipRefs.addEventListener('change', () => { if(book) rebuildCurrentBookFiltering(); saveState(); });
-  skipFront.addEventListener('change', () => { if(book){ book.chapters.forEach(c=>{}); reapplyFrontMatterSkip(); } saveState(); });
 
-  function reapplyFrontMatterSkip(){
-    book.chapters.forEach(c => {
-      if(FRONTMATTER_TITLES.test(c.title.trim())) c.skip = skipFront.checked;
+  function renderDocPanel(doc){
+    const byPara = {};
+    doc.instances.forEach(inst => { (byPara[inst.paraIndex] = byPara[inst.paraIndex] || []).push(inst); });
+    const priority = ['notfound', 'checkfail', 'review', 'verified'];
+    let html = '';
+    doc.paragraphs.forEach((para, paraIndex) => {
+      const insts = (byPara[paraIndex] || []).slice().sort((a, b) => a.start - b.start);
+      if (insts.length === 0){
+        html += `<p>${escapeHtml(para)}</p>`;
+        return;
+      }
+      const groups = [];
+      let cur = null;
+      insts.forEach(inst => {
+        if (cur && cur.spanId === inst.spanId){
+          cur.refIndexes.push(inst.refIndex);
+        } else {
+          cur = { spanId: inst.spanId, start: inst.start, end: inst.end, marker: inst.marker, refIndexes: [inst.refIndex] };
+          groups.push(cur);
+        }
+      });
+      let cursor = 0;
+      let p = '<p>';
+      groups.forEach(g => {
+        p += escapeHtml(para.slice(cursor, g.start));
+        const verdicts = g.refIndexes.map(ri => (lastRun[ri] && lastRun[ri].verdictKey) || 'pending');
+        const worst = priority.find(v => verdicts.includes(v)) || (verdicts.includes('verified') ? 'verified' : 'pending');
+        const cls = (worst === 'checkfail') ? 'notfound' : worst;
+        const refLabel = g.refIndexes.map(ri => ri + 1).join(', ');
+        p += `<mark class="cite-hl ${cls}" data-ref="${g.refIndexes[0]}" title="${escapeHtml(g.marker)} — reference ${escapeHtml(refLabel)}, click to jump">${escapeHtml(g.marker)}</mark>`;
+        cursor = g.end;
+      });
+      p += escapeHtml(para.slice(cursor));
+      p += '</p>';
+      html += p;
     });
-    renderChapterList();
+    docPanelBody.innerHTML = html;
+    docPanel.classList.add('show');
+    docPanelBody.querySelectorAll('.cite-hl').forEach(el => {
+      el.addEventListener('click', () => {
+        const card = document.getElementById(`card-${el.dataset.ref}`);
+        if (card){
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.classList.add('flash');
+          setTimeout(() => card.classList.remove('flash'), 900);
+        }
+      });
+    });
   }
 
-  function rebuildCurrentBookFiltering(){
-    // Note: toggling "skip refs" after load only affects newly loaded books cleanly,
-    // since original raw text isn't retained post-parse. Inform lightly via status.
-    setStatus('Tip: the "skip references" toggle applies on next file load for best results.', false);
+  function applyFilter(){
+    resultsEl.querySelectorAll('.card').forEach(card => {
+      const v = card.dataset.verdict;
+      let visible = true;
+      if (activeFilter){
+        visible = (activeFilter === 'notfound') ? (v === 'notfound' || v === 'checkfail') : (v === activeFilter);
+      }
+      card.style.display = visible ? '' : 'none';
+    });
+    document.querySelectorAll('.filter-item').forEach(el => el.classList.toggle('active', el.dataset.filter === activeFilter));
+    filterClearEl.classList.toggle('show', !!activeFilter);
   }
 
-  el('resetBtn').addEventListener('click', () => {
-    pause();
-    book = null; bookKey = null;
-    el('workspace').hidden = true;
-    fileInput.value = '';
-    setStatus('');
+  function citationHtml(rec, style){
+    const text = formatCitation(rec, style);
+    const escaped = escapeHtml(text);
+    const doiUrl = rec.doi ? `https://doi.org/${rec.doi}` : rec.url;
+    if (doiUrl){
+      const escapedUrl = escapeHtml(doiUrl);
+      if (escaped.includes(escapedUrl)){
+        return escaped.replace(escapedUrl, `<a href="${escapedUrl}" target="_blank" rel="noopener">${escapedUrl}</a>`);
+      }
+    }
+    return escaped;
+  }
+
+  function getVerifiedRecords(){
+    return lastRun.filter(r => r && r.verdictKey === 'verified' && r.best).map(r => r.best);
+  }
+
+  function renderConfirmedPanel(){
+    const recs = getVerifiedRecords();
+    if (recs.length === 0){
+      confirmedPanel.classList.remove('show');
+      citationListEl.innerHTML = '';
+      return;
+    }
+    confirmedPanel.classList.add('show');
+    citationListEl.innerHTML = recs.map(rec => `<div class="citation-entry">${citationHtml(rec, currentStyle)}</div>`).join('');
+  }
+
+  function recomputeSummary(){
+    const counts = { verified: 0, review: 0, notfound: 0, checkfail: 0 };
+    lastRun.forEach(r => { if (r && counts[r.verdictKey] !== undefined) counts[r.verdictKey]++; });
+    cVerified.textContent = counts.verified;
+    cReview.textContent = counts.review;
+    cNotfound.textContent = counts.notfound + counts.checkfail;
+    applyFilter();
+    renderConfirmedPanel();
+  }
+
+  async function retryOne(i){
+    const ref = currentRefs[i];
+    if (!ref) return;
+    const claim = currentClaims[i];
+    const stampEl = document.getElementById(`stamp-${i}`);
+    const bodyEl = document.getElementById(`body-${i}`);
+    const retryBtn = document.getElementById(`retry-${i}`);
+    stampEl.className = 'stamp pending';
+    stampEl.textContent = 'Checking…';
+    bodyEl.innerHTML = '<div class="pending-text">Re-querying Crossref, PubMed, Semantic Scholar, and arXiv…</div>';
+    if (retryBtn) retryBtn.classList.remove('show');
+    const verification = await verifyReference(ref);
+    updateCard(i, verification, claim);
+    const cls = classify(verification.results);
+    lastRun[i] = { ref, claim, verdictKey: cls.verdict, verdict: cls.label, best: cls.best };
+    recomputeSummary();
+  }
+
+  resultsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.retry-btn');
+    if (!btn) return;
+    const i = parseInt(btn.id.replace('retry-',''), 10);
+    retryOne(i);
   });
 
-  // init
-  loadPrefs().then(populateVoices);
-  drawDial(0);
+  summaryEl.addEventListener('click', (e) => {
+    const item = e.target.closest('.filter-item');
+    if (item){
+      const f = item.dataset.filter;
+      activeFilter = (activeFilter === f) ? null : f;
+      applyFilter();
+      return;
+    }
+    if (e.target.closest('#filterClear')){
+      activeFilter = null;
+      applyFilter();
+    }
+  });
+
+  styleTabsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.style-tab');
+    if (!btn) return;
+    currentStyle = btn.dataset.style;
+    styleTabsEl.querySelectorAll('.style-tab').forEach(b => b.classList.toggle('active', b === btn));
+    renderConfirmedPanel();
+  });
+
+  copyCitationsBtn.addEventListener('click', async () => {
+    const recs = getVerifiedRecords();
+    const text = recs.map(rec => formatCitation(rec, currentStyle)).join('\n\n');
+    try{
+      await navigator.clipboard.writeText(text);
+      copyCitationsBtn.textContent = 'Copied ✓';
+    } catch(e){
+      copyCitationsBtn.textContent = 'Copy failed';
+    }
+    setTimeout(() => copyCitationsBtn.textContent = 'Copy formatted list', 1500);
+  });
+
+  exportBibtexBtn.addEventListener('click', () => {
+    const recs = getVerifiedRecords();
+    const content = recs.map((rec, idx) => toBibtexEntry(rec, idx + 1)).join('\n\n');
+    const ok = downloadFile('confirmed-references.bib', content, 'application/x-bibtex');
+    if (!ok){
+      exportBibtexBtn.textContent = 'Download failed';
+      setTimeout(() => exportBibtexBtn.textContent = 'Download BibTeX (.bib)', 1800);
+    }
+  });
+
+  exportRisBtn.addEventListener('click', () => {
+    const recs = getVerifiedRecords();
+    const content = recs.map(rec => toRisEntry(rec)).join('\n\n');
+    const ok = downloadFile('confirmed-references.ris', content, 'application/x-research-info-systems');
+    if (!ok){
+      exportRisBtn.textContent = 'Download failed';
+      setTimeout(() => exportRisBtn.textContent = 'Download RIS — EndNote / RefMan / RefWorks (.ris)', 1800);
+    }
+  });
+
+  refsInput.addEventListener('input', () => {
+    const n = currentMode === 'claims' ? splitClaimRefPairs(refsInput.value).length : splitReferences(refsInput.value).length;
+    const noun = currentMode === 'claims' ? 'pair' : 'reference';
+    refCount.textContent = n ? `${n} ${noun}${n === 1 ? '' : 's'} detected` : '';
+  });
+
+  clearBtn.addEventListener('click', () => {
+    refsInput.value = '';
+    refCount.textContent = '';
+    resultsEl.innerHTML = '';
+    summaryEl.classList.remove('show');
+    emptyNote.classList.remove('show');
+    lastRun = [];
+    currentRefs = [];
+    currentClaims = [];
+    activeFilter = null;
+    aiStatus.textContent = '';
+    applyFilter();
+    renderConfirmedPanel();
+    uploadedDoc = null;
+    if (fileInput) fileInput.value = '';
+    uploadFilenameEl.textContent = '';
+    uploadStatusEl.textContent = '';
+    uploadStatusEl.style.display = 'none';
+    docPanel.classList.remove('show');
+    docPanelBody.innerHTML = '';
+  });
+
+  async function runVerification(pairs){
+    const refs = pairs.map(p => p.ref);
+    const claims = pairs.map(p => p.claim);
+    emptyNote.classList.remove('show');
+    if (refs.length === 0){
+      emptyNote.classList.add('show');
+      return false;
+    }
+
+    resultsEl.innerHTML = '';
+    summaryEl.classList.remove('show');
+    activeFilter = null;
+    aiStatus.textContent = '';
+
+    currentRefs = refs;
+    currentClaims = claims;
+    refs.forEach((ref, i) => resultsEl.appendChild(renderCard(i, ref, claims[i])));
+
+    lastRun = new Array(refs.length);
+    summaryEl.classList.add('show');
+    renderConfirmedPanel();
+
+    await runWithConcurrency(refs, verifyReference, 3, (i, verification) => {
+      updateCard(i, verification, claims[i]);
+      const cls = classify(verification.results);
+      lastRun[i] = { ref: refs[i], claim: claims[i], verdictKey: cls.verdict, verdict: cls.label, best: cls.best };
+      recomputeSummary();
+    });
+    return true;
+  }
+
+  checkBtn.addEventListener('click', async () => {
+    if (currentMode === 'upload'){
+      if (!uploadedDoc || !uploadedDoc.refEntries.length){
+        uploadStatusEl.style.display = '';
+        uploadStatusEl.textContent = 'Upload a document first — drop a .txt, .docx, or .pdf file above, then try again.';
+        return;
+      }
+      checkBtn.disabled = true;
+      checkBtn.textContent = 'Verifying…';
+      docPanel.classList.remove('show');
+      const pairs = buildPairsFromUpload(uploadedDoc);
+      const ok = await runVerification(pairs);
+      if (ok) renderDocPanel(uploadedDoc);
+      checkBtn.disabled = false;
+      checkBtn.textContent = MODE_CONFIG.upload.buttonLabel;
+      return;
+    }
+    const pairs = currentMode === 'claims'
+      ? splitClaimRefPairs(refsInput.value)
+      : splitReferences(refsInput.value).map(r => ({ claim: null, ref: r }));
+    checkBtn.disabled = true;
+    checkBtn.textContent = 'Verifying…';
+    await runVerification(pairs);
+    checkBtn.disabled = false;
+    checkBtn.textContent = MODE_CONFIG[currentMode].buttonLabel;
+  });
+
+  runAiCheckBtn.addEventListener('click', async () => {
+    const provider = AI_PROVIDERS[aiProviderSelect.value] || AI_PROVIDERS.anthropic;
+    const apiKey = apiKeyInput.value.trim();
+    const model = aiModelInput.value.trim() || provider.defaultModel;
+    if (!apiKey){
+      aiStatus.textContent = `Enter your ${provider.label} API key first.`;
+      return;
+    }
+    const eligible = [];
+    lastRun.forEach((r, i) => { if (r && r.claim && r.best) eligible.push(i); });
+    if (eligible.length === 0){
+      aiStatus.textContent = 'No claim + reference pairs with a resolved source to check yet. Switch to claim + reference mode and run "File & Verify" first.';
+      return;
+    }
+    runAiCheckBtn.disabled = true;
+    let done = 0;
+    aiStatus.textContent = `Checking 0 / ${eligible.length} via ${provider.label}…`;
+    for (const i of eligible){
+      const r = lastRun[i];
+      const verdictEl = document.getElementById(`ai-verdict-${i}`);
+      try{
+        const verdict = await provider.call(r.claim, r.best, apiKey, model);
+        if (verdictEl){
+          const tag = ['supports','contradicts','unrelated','uncertain'].includes(verdict.verdict) ? verdict.verdict : 'uncertain';
+          verdictEl.innerHTML = `<span class="ai-tag ${tag}">AI (${escapeHtml(provider.label)}): ${escapeHtml(tag)}</span>${escapeHtml(verdict.reason || '')}`;
+        }
+      } catch(e){
+        if (verdictEl) verdictEl.innerHTML = `<span class="ai-tag error">AI check failed</span>${escapeHtml(String((e && e.message) || e))}`;
+      }
+      done++;
+      aiStatus.textContent = `Checking ${done} / ${eligible.length} via ${provider.label}…`;
+      await sleep(400);
+    }
+    aiStatus.textContent = `Done — checked ${eligible.length} pair${eligible.length === 1 ? '' : 's'} via ${provider.label}.`;
+    runAiCheckBtn.disabled = false;
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    const lines = lastRun.filter(Boolean).map((r, i) => {
+      let line = r.claim
+        ? `${i+1}. Claim: "${r.claim}"\n    Ref: [${r.verdict}] ${r.ref}`
+        : `${i+1}. [${r.verdict}] ${r.ref}`;
+      if (r.best && r.best.title){
+        line += `\n    → Matched: "${r.best.title}" (${r.best.source}${r.best.url ? ', ' + r.best.url : ''})`;
+      }
+      return line;
+    }).join('\n\n');
+    try{
+      await navigator.clipboard.writeText(lines);
+      copyBtn.textContent = 'Copied ✓';
+      setTimeout(() => copyBtn.textContent = 'Copy report', 1500);
+    } catch(e){
+      copyBtn.textContent = 'Copy failed';
+      setTimeout(() => copyBtn.textContent = 'Copy report', 1500);
+    }
+  });
 })();
 </script>
 </body>
