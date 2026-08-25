@@ -64,6 +64,23 @@ header.masthead{
 }
 .brand-row{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
 .brand-mark{ flex-shrink:0; border-radius:6px; box-shadow: var(--shadow-sm); }
+.support-btn{
+  margin-left:auto;
+  display:inline-flex; align-items:center; gap:7px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 7px 14px;
+  text-decoration:none;
+  box-shadow: var(--shadow-sm);
+  transition: border-color .15s ease, transform .15s ease;
+  white-space: nowrap;
+}
+.support-btn:hover{ border-color: var(--accent); transform: translateY(-1px); }
 h1{
   font-family: var(--font-display);
   font-weight: 800;
@@ -594,6 +611,7 @@ details.methodology code{
         <path d="M6.5 12.5l3.2 3.2L17.5 8" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <h1>Citation Verifier</h1>
+      <a class="support-btn" href="https://paypal.me/Onoja412" target="_blank" rel="noopener">☕ Buy me a coffee</a>
     </div>
     <p class="subtitle">Paste a bibliography below. Each entry gets looked up against five live scholarly indexes and stamped <b>Verified</b>, <b>Possible Match</b>, or <b>No Match Found</b> based on how closely the returned record matches what was cited. Switch to <b>claim + reference</b> mode to also check whether each source actually supports the specific sentence it's cited for, not just that it exists — or use <b>upload document</b> to do all of this automatically from your actual manuscript, with results highlighted right in the text.</p>
     <div class="sources-row">
@@ -724,7 +742,7 @@ details.methodology code{
   </details>
 
   <footer class="colophon">
-    Cataloged by Anthony Onoja, Ph.D. · <a href="mailto:donmaston09@gmail.com">donmaston09@gmail.com</a>
+    Cataloged by Anthony Onoja, Ph.D. · <a href="mailto:donmaston09@gmail.com">donmaston09@gmail.com</a> · This tool is free to use. If it saved you time, you can <a href="https://paypal.me/Onoja412" target="_blank" rel="noopener">buy me a coffee</a>.
   </footer>
 
 </div>
