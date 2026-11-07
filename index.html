@@ -727,17 +727,18 @@ details.methodology code{
 
   <details class="methodology">
     <summary>Methodology &amp; limitations</summary>
-    <p>Each reference is checked with a bibliographic search against Crossref and Semantic Scholar, a cleaned term search against PubMed, and a full-text search against arXiv (volume/page/date noise is stripped first for PubMed and arXiv, since raw citation punctuation can trip up their query parsers). Each source returns its top few candidates, not just its #1 ranked guess, and the tool scores every candidate's title against your pasted text — this catches cases where the right paper wasn't ranked first. If a DOI is present in the pasted text, it's confirmed directly against Crossref's registry first and treated as authoritative; DOIs with the <code>10.1101/</code> prefix are also confirmed directly against the bioRxiv and medRxiv preprint APIs.</p>
+    <p>If the pasted reference has a DOI (or a bare arXiv ID, which maps to an arXiv DOI), it is looked up first in Crossref and then in DataCite, which registers arXiv, Zenodo and most data-repository DOIs; <code>10.1101/</code> DOIs are also looked up in the bioRxiv and medRxiv APIs. <b>A DOI that resolves is not taken on trust:</b> the record's title and first authors are compared with what you cited, because a real DOI attached to the wrong paper is a common pattern in AI-generated references. When the DOI record matches, no further search is needed. Otherwise the reference is searched in Crossref and Semantic Scholar, plus a cleaned term search in PubMed, and every returned candidate's title is scored against your pasted text. Every matched record is also checked for a retraction, withdrawal or expression of concern.</p>
     <ul>
-      <li><b>Verified</b> — DOI confirmed (including via bioRxiv/medRxiv), or ≥75% word overlap with a real indexed record.</li>
-      <li><b>Possible match</b> — 40–75% overlap. Worth a manual glance; could be a paraphrased title, a preprint vs. published version, or a partial citation.</li>
-      <li><b>No match / check failed</b> — either no record cleared 40% overlap in any of the four searchable indexes, or at least two of them couldn't be reached (network issue or rate limit) — both are folded into one neutral count so an unreachable API is never confused with a real non-match. Each card says which case it is, and has a recheck button.</li>
+      <li><b>DOI Confirmed / Verified</b> — the DOI record's title and authors match what you cited, or a search found a record with ≥75% title-word overlap.</li>
+      <li><b>DOI: Details Differ / Possible match / Expression of Concern</b> — worth a manual check: a partly matching title (often a preprint vs. published version), authors that don't appear in the citation, 40–75% search overlap, or a publisher's expression of concern.</li>
+      <li><b>DOI ≠ Cited Paper / DOI Not Registered / Retracted / No match</b> — the DOI belongs to a different paper; the DOI is in neither Crossref nor DataCite (invented, a typo, or not registered yet); the paper was retracted or withdrawn; or nothing cleared 40% overlap.</li>
+      <li><b>Check failed</b> — too many sources couldn't be reached (network issue or rate limit). This is never counted as "not found". Requests are paced and retried automatically, and each card has a recheck button.</li>
     </ul>
-    <p><b>Google Scholar isn't included</b> — it has no public API, and scraping it violates its terms of service and gets blocked by CAPTCHA in practice. <b>bioRxiv/medRxiv's own search isn't included either</b>, for a related reason: their public API only supports direct DOI lookups, not free-text search, so bioRxiv/medRxiv coverage here is DOI-only. Crossref, PubMed, Semantic Scholar, and arXiv together cover the large majority of what Scholar indexes for genuinely published or preprinted work, and return structured metadata rather than scraped HTML, which is what makes this kind of automated check possible at all.</p>
+    <p><b>Google Scholar isn't included</b> — it has no public API, and scraping it violates its terms of service and gets blocked by CAPTCHA in practice. <b>bioRxiv/medRxiv's own search isn't included either</b>, for a related reason: their public API only supports direct DOI lookups, not free-text search, so bioRxiv/medRxiv coverage here is DOI-only. <b>arXiv's own search isn't included</b> because its API can't be called from a browser, so arXiv papers are found by DOI or arXiv ID (through DataCite) or when Crossref or Semantic Scholar index them. Crossref, DataCite, PubMed and Semantic Scholar together cover the large majority of what Scholar indexes for genuinely published or preprinted work, and return structured metadata rather than scraped HTML, which is what makes this kind of automated check possible at all.</p>
     <p><b>A "no match" is a signal to check by hand, never proof of fabrication.</b> Very new papers, non-English titles, book chapters, conference proceedings, and paywalled or niche sources can all be under-indexed or absent from these databases even when they're completely real. Semantic Scholar's free public API in particular has a low, shared rate limit and can fail intermittently under load — that's what the recheck button is for. Treat this tool as a fast triage pass that narrows down what to check by hand, not a final verdict.</p>
-    <p>All lookups run directly from your browser to Crossref, PubMed, Semantic Scholar, arXiv, and the bioRxiv/medRxiv APIs — nothing is sent anywhere else or stored.</p>
+    <p>All lookups run directly from your browser to Crossref, DataCite, PubMed, Semantic Scholar, and the bioRxiv/medRxiv APIs — nothing is sent anywhere else or stored.</p>
     <p><b>Filtering and export:</b> click any count in the summary row to show only references in that category; click it again (or "show all") to clear the filter. Verified references can be reformatted into APA, MLA, Chicago, Harvard, or Vancouver style and exported as BibTeX or RIS. RIS is a shared, well-documented format that EndNote, Reference Manager, RefWorks, Zotero, and Mendeley all import directly — rather than three separate near-identical proprietary exports, one RIS file works across all of them. Formatting relies on whatever metadata the matched record provides (author list, year, journal, volume/issue/pages, DOI); fields the source didn't return are simply omitted, so it's worth a final check against your target style guide before submission.</p>
-    <p><b>Claim + reference mode.</b> When you paste a claim on one line and its citation on the next (blank line between each pair), the tool still verifies the reference exists as above, and additionally pulls the abstract where the matched source provides one (Semantic Scholar, Crossref, arXiv, bioRxiv/medRxiv) and scores word overlap between your claim and that abstract. This catches the failure mode existence-checking alone misses: a real, correctly cited paper that doesn't actually say what it's being cited for. The result is shown as a Topic Overlap badge — High, Moderate, or Low — and it is keyword overlap, not comprehension. Treat "High" as "worth trusting a bit more," not proof, and "Low" as "read the source before you cite it," not proof of misuse. When the matched source has no abstract available, overlap against the title alone isn't meaningful and is flagged as such rather than scored. For an actual judgment, use the optional AI relevance check below the intake box, which sends your claim and the source's abstract (or title, if no abstract is available) to an AI model via your own API key and asks it to judge support, contradiction, or irrelevance directly. Choose Anthropic (Claude), OpenAI (GPT), Google (Gemini), or Groq — your request goes straight from your browser to that provider's own API, nothing passes through any server of ours, and your key is never stored. A default model is filled in for each provider, but you can override it in the model field if you'd rather use a different one.</p>
+    <p><b>Claim + reference mode.</b> When you paste a claim on one line and its citation on the next (blank line between each pair), the tool still verifies the reference exists as above, and additionally pulls the abstract where the matched source provides one (Semantic Scholar, Crossref, DataCite including arXiv, bioRxiv/medRxiv) and scores word overlap between your claim and that abstract. This catches the failure mode existence-checking alone misses: a real, correctly cited paper that doesn't actually say what it's being cited for. The result is shown as a Topic Overlap badge — High, Moderate, or Low — and it is keyword overlap, not comprehension. Treat "High" as "worth trusting a bit more," not proof, and "Low" as "read the source before you cite it," not proof of misuse. When the matched source has no abstract available, overlap against the title alone isn't meaningful and is flagged as such rather than scored. For an actual judgment, use the optional AI relevance check below the intake box, which sends your claim and the source's abstract (or title, if no abstract is available) to an AI model via your own API key and asks it to judge support, contradiction, or irrelevance directly. Choose Anthropic (Claude), OpenAI (GPT), Google (Gemini), or Groq — your request goes straight from your browser to that provider's own API, nothing passes through any server of ours, and your key is never stored. A default model is filled in for each provider, but you can override it in the model field if you'd rather use a different one.</p>
     <p><b>Document upload mode.</b> Upload a .txt, .docx, or .pdf of your actual manuscript and the tool does the claim + reference pairing for you: it looks for a "References" or "Bibliography" heading to split your document into body text and bibliography, splits the bibliography into individual entries the same way the other modes do, then scans the body text for in-text citation markers in either numbered style (<code>[12]</code>, <code>[12,13]</code>, <code>[12-14]</code>) or author-year style (<code>(Smith, 2021)</code>, <code>(Smith et al., 2021; Doe, 2020)</code>) and links each one to the matching bibliography entry — by position for numbered markers, by first-author surname and year for author-year markers. The sentence around each marker becomes the "claim" for that reference, exactly as in claim + reference mode, and every reference gets checked and, where linked, relevance-scored. .docx files are read with the Mammoth library and PDFs with Mozilla's PDF.js, both loaded from a public CDN the first time you use this mode and run entirely in your browser — the document itself is never uploaded anywhere. Once checking finishes, your document text is shown back to you with every linked citation highlighted green, amber, or red by verdict; click one to jump to its detail card. This linking is regex- and heuristic-based, not a real parser: it can miss citations in unusual formats, mis-split a reference list without a clean heading, or mislink an author-year marker if two references share a surname and year. Treat the highlights as a fast way to see where the problems are concentrated, and double-check anything that looks off — the same "check by hand, don't take as proof" rule applies here as everywhere else in this tool.</p>
   </details>
 
@@ -766,8 +767,50 @@ details.methodology code{
   }
 
   function extractDOI(ref){
-    const m = ref.match(/10\.\d{4,9}\/[^\s"'<>,;)\]]+/);
-    return m ? m[0].replace(/[.,;]+$/,'') : null;
+    // Parentheses are legal inside DOIs (e.g. Lancet: 10.1016/S0140-6736(20)31180-6),
+    // so keep them and only drop a trailing ")" that has no matching "(" — e.g. "(doi: 10.x/y)".
+    const m = ref.match(/10\.\d{4,9}\/[^\s"'<>,;\]]+/);
+    if (!m) return null;
+    let doi = m[0];
+    for (;;){
+      const before = doi;
+      doi = doi.replace(/[.,;:]+$/, '');
+      const opens = (doi.match(/\(/g) || []).length;
+      const closes = (doi.match(/\)/g) || []).length;
+      if (doi.endsWith(')') && closes > opens) doi = doi.slice(0, -1);
+      if (doi === before) break;
+    }
+    return doi;
+  }
+
+  // Normalise a string to bare lowercase ASCII letters, for surname matching
+  // ("Abu-Libdeh", "Müller" → "abulibdeh", "muller").
+  function lettersOnly(s){
+    return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+  }
+
+  // Does at least one of the record's first three author surnames appear in the cited reference?
+  // null = record has no author data, so no judgement either way.
+  function authorsAppear(ref, rec){
+    const fams = (rec.authorsList || []).slice(0, 3).map(a => lettersOnly(a.family)).filter(f => f.length > 2);
+    if (fams.length === 0) return null;
+    const r = lettersOnly(ref);
+    return fams.some(f => r.includes(f));
+  }
+
+  // Retraction / withdrawal / expression of concern, from Crossref's update metadata or the record title.
+  function retractionStatus(rec){
+    if (!rec) return null;
+    const types = (rec.updates || []).map(u => u.type);
+    const t = (rec.title || '').trim();
+    if (types.includes('retraction') || /^retracted\b/i.test(t)) return 'retracted';
+    if (types.includes('withdrawal') || /^withdrawn\b/i.test(t)) return 'withdrawn';
+    if (types.includes('expression_of_concern') || /^expression of concern\b/i.test(t)) return 'concern';
+    return null;
+  }
+
+  function crossrefUpdates(item){
+    return (item['updated-by'] || []).map(u => ({ type: u.type, doi: u.DOI || null }));
   }
 
   function extractYear(ref){
@@ -1139,19 +1182,54 @@ details.methodology code{
 
   function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
+  // Minimum gap between requests to the same host, so a long reference list stays inside
+  // each API's published rate limits instead of tripping them and reporting "unreachable".
+  const HOST_GAP_MS = {
+    'api.crossref.org': 150,
+    'api.datacite.org': 150,
+    'api.semanticscholar.org': 1100,
+    'eutils.ncbi.nlm.nih.gov': 350,
+    'export.arxiv.org': 3000,
+    'api.biorxiv.org': 300
+  };
+  const hostNextSlot = {};
+
+  async function waitForHostSlot(url){
+    let host;
+    try{ host = new URL(url).host; } catch(e){ return; }
+    const gap = HOST_GAP_MS[host];
+    if (!gap) return;
+    const now = Date.now();
+    const slot = Math.max(now, hostNextSlot[host] || 0);
+    hostNextSlot[host] = slot + gap;
+    if (slot > now) await sleep(slot - now);
+  }
+
+  // Retries rate limits (429), server errors (5xx) and network failures. Browsers often surface a
+  // rate-limited response without CORS headers as a thrown network error, so those are retried too.
   async function fetchWithRetry(url, retries, backoff){
-    retries = retries === undefined ? 2 : retries;
-    backoff = backoff === undefined ? 700 : backoff;
-    let lastRes = null;
+    retries = retries === undefined ? 3 : retries;
+    backoff = backoff === undefined ? 1000 : backoff;
+    let lastRes = null, lastErr = null;
     for (let attempt = 0; attempt <= retries; attempt++){
-      lastRes = await fetch(url);
-      if (lastRes.status === 429 && attempt < retries){
-        await sleep(backoff * (attempt + 1));
+      await waitForHostSlot(url);
+      const delay = backoff * Math.pow(2, attempt) + Math.floor(Math.random() * 250);
+      try{
+        lastRes = await fetch(url);
+      } catch(e){
+        lastErr = e;
+        if (attempt < retries){ await sleep(delay); continue; }
+        throw e;
+      }
+      if ((lastRes.status === 429 || lastRes.status >= 500) && attempt < retries){
+        const retryAfter = Number(lastRes.headers.get('Retry-After'));
+        await sleep(retryAfter > 0 ? retryAfter * 1000 : delay);
         continue;
       }
       return lastRes;
     }
-    return lastRes;
+    if (lastRes) return lastRes;
+    throw lastErr;
   }
 
   function cleanForPubMed(ref){
@@ -1165,10 +1243,12 @@ details.methodology code{
     return s;
   }
 
+  // Returns a record, { notFound: true } for a clean 404, or throws if Crossref couldn't be reached.
   async function queryCrossrefDOI(doi){
     const url = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const res = await fetchWithRetry(url);
+    if (res.status === 404) return { notFound: true };
+    if (!res.ok) throw new Error('Crossref (DOI) ' + res.status);
     const data = await res.json();
     const item = data.message;
     if (!item) return null;
@@ -1186,6 +1266,39 @@ details.methodology code{
       doi: item.DOI,
       url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : null),
       abstract: stripJats(item.abstract),
+      updates: crossrefUpdates(item),
+      doiMatch: true
+    };
+  }
+
+  // DataCite registers the DOIs Crossref doesn't: arXiv (10.48550/…), Zenodo (10.5281/…),
+  // Figshare, Dryad and most data repositories. Same return contract as queryCrossrefDOI.
+  async function queryDataCiteDOI(doi){
+    const url = `https://api.datacite.org/dois/${encodeURIComponent(doi)}`;
+    const res = await fetchWithRetry(url);
+    if (res.status === 404) return { notFound: true };
+    if (!res.ok) throw new Error('DataCite (DOI) ' + res.status);
+    const data = await res.json();
+    const a = data && data.data && data.data.attributes;
+    if (!a) return { notFound: true };
+    const authorsList = (a.creators || []).slice(0,12).map(c => {
+      if (c.familyName) return { given: c.givenName || '', family: c.familyName };
+      const name = (c.name || '').trim();
+      if (name.includes(',')){ const [family, given] = name.split(',').map(s => s.trim()); return { given: given || '', family }; }
+      return parseAuthorName(name);
+    }).filter(x => x && x.family);
+    const isArxiv = /^10\.48550\//i.test(doi);
+    return {
+      source: 'DataCite (DOI)',
+      title: ((a.titles || [])[0] || {}).title || '',
+      year: a.publicationYear || null,
+      authorsList,
+      authors: authorsList.slice(0,3).map(x => `${x.given} ${x.family}`.trim()).join(', ') + (authorsList.length > 3 ? ', et al.' : ''),
+      journal: (a.container && a.container.title) || (isArxiv ? 'arXiv preprint' : a.publisher) || null,
+      doi: a.doi || doi,
+      url: a.url || `https://doi.org/${doi}`,
+      abstract: ((a.descriptions || []).find(d => d.descriptionType === 'Abstract') || {}).description || null,
+      updates: [],
       doiMatch: true
     };
   }
@@ -1210,7 +1323,8 @@ details.methodology code{
         pages: item.page || null,
         doi: item.DOI,
         url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : null),
-        abstract: stripJats(item.abstract)
+        abstract: stripJats(item.abstract),
+        updates: crossrefUpdates(item)
       };
     });
   }
@@ -1326,28 +1440,56 @@ details.methodology code{
   }
 
   async function verifyReference(ref){
-    const doi = extractDOI(ref);
+    // A bare arXiv ID ("arXiv:2406.09187", "arxiv.org/abs/2406.09187v2") maps to its DataCite DOI.
+    const arxivId = (ref.match(/arxiv(?:\.org\/(?:abs|pdf)\/|\s*:\s*|\s+)(\d{4}\.\d{4,5})(?:v\d+)?/i) || [])[1];
+    const doi = extractDOI(ref) || (arxivId ? `10.48550/arXiv.${arxivId}` : null);
     const results = [];
 
+    // A DOI that resolves only proves the DOI exists — not that it belongs to the cited paper.
+    // Score it on how well the DOI record's title and authors match what was actually cited.
+    const scoreDoiRecord = r => ({ ...r, score: overlapScore(ref, r.title), authorOK: authorsAppear(ref, r) });
+
     if (doi){
-      try{
-        const r = await queryCrossrefDOI(doi);
-        if (r) results.push({...r, score: 1});
-      } catch(e){ /* ignore, fall through to text search */ }
+      // Crossref first, then DataCite. A DOI counts as "registered nowhere" only when every
+      // registry answered cleanly with 404 — an unreachable registry is never read as "not found".
+      let registryErrors = 0, notFoundCount = 0;
+      for (const [fn, label] of [[queryCrossrefDOI, 'Crossref (DOI)'], [queryDataCiteDOI, 'DataCite (DOI)']]){
+        try{
+          const r = await fn(doi);
+          if (r && r.notFound){ notFoundCount++; continue; }
+          if (r){ results.push(scoreDoiRecord(r)); break; }
+        } catch(e){
+          registryErrors++;
+          results.push({ source: label, error: true, message: String(e && e.message || e) });
+        }
+      }
 
       if (/^10\.1101\//.test(doi) && !results.some(r => r.doiMatch)){
         try{
           const r2 = await queryPreprintServer(doi);
-          if (r2) results.push({...r2, score: 1});
+          if (r2) results.push(scoreDoiRecord(r2));
         } catch(e){ /* ignore */ }
+      }
+
+      if (!results.some(r => r.doiMatch) && notFoundCount === 2 && registryErrors === 0){
+        results.push({ source: 'DOI registries', doiUnregistered: true });
+      }
+
+      // The DOI record already matches what was cited, so free-text search adds nothing
+      // except load on rate-limited APIs. Skip it (retraction status is on the DOI record).
+      const hit = results.find(r => r.doiMatch);
+      if (hit && hit.score >= 0.75 && hit.authorOK !== false){
+        return { ref, doi, results };
       }
     }
 
+    // arXiv's export API sends no CORS header, so a browser can never read it — every call
+    // failed and was reported as "unreachable". arXiv papers are instead resolved by DOI
+    // (DataCite, including bare arXiv IDs) above; queryArxiv stays for a future server-side proxy.
     const providers = [
       {fn: queryCrossref, name:'Crossref'},
       {fn: querySemanticScholar, name:'Semantic Scholar'},
-      {fn: queryPubMed, name:'PubMed'},
-      {fn: queryArxiv, name:'arXiv'}
+      {fn: queryPubMed, name:'PubMed'}
     ];
 
     const settled = await Promise.allSettled(providers.map(p => p.fn(ref)));
@@ -1369,18 +1511,59 @@ details.methodology code{
     return { ref, doi, results };
   }
 
+  // Downgrade a would-be match if the matched record is retracted, withdrawn, or under an expression of concern.
+  function withRetraction(cls){
+    const status = retractionStatus(cls.best);
+    if (!status) return cls;
+    const noticeType = { retracted:'retraction', withdrawn:'withdrawal', concern:'expression_of_concern' }[status];
+    const notice = (cls.best.updates || []).find(u => u.type === noticeType && u.doi);
+    const noticeText = notice ? ` Notice: https://doi.org/${notice.doi}.` : '';
+    if (status === 'retracted') return { ...cls, verdict:'notfound', label:'Retracted', note:`This paper has been retracted. Don't cite it as evidence unless you are writing about the retraction itself.${noticeText}` };
+    if (status === 'withdrawn') return { ...cls, verdict:'notfound', label:'Withdrawn', note:`This paper has been withdrawn.${noticeText}` };
+    return { ...cls, verdict:'review', label:'Expression of Concern', note:`The publisher has issued an expression of concern about this paper. Read it before relying on the paper.${noticeText}` };
+  }
+
   function classify(results){
-    const doiHit = results.find(r => r.doiMatch);
-    if (doiHit) return { verdict:'verified', label:'DOI Confirmed', best: doiHit };
     const errors = results.filter(r => r.error);
     const valid = results.filter(r => !r.error && typeof r.score === 'number');
+    const doiHit = results.find(r => r.doiMatch);
+    const textOnly = valid.filter(r => !r.doiMatch);
+    const textBest = textOnly.length ? textOnly.reduce((a,b) => (b.score > a.score ? b : a)) : null;
+
+    if (doiHit){
+      const pct = Math.round(doiHit.score * 100);
+      if (doiHit.score < 0.4){
+        const alt = (textBest && textBest.score >= 0.75 && textBest.doi && textBest.doi.toLowerCase() !== (doiHit.doi || '').toLowerCase())
+          ? ` A record that does match the cited title exists under a different DOI (${textBest.doi}); check which paper you meant.`
+          : '';
+        return { verdict:'notfound', label:'DOI ≠ Cited Paper', best: doiHit,
+          note:`The DOI resolves, but to a paper whose title doesn't match the cited title (${pct}% overlap). A real DOI attached to the wrong paper is a common pattern in AI-fabricated references.${alt}` };
+      }
+      if (doiHit.score < 0.75 || doiHit.authorOK === false){
+        const why = doiHit.score < 0.75 ? `the title only partly matches (${pct}% overlap)` : `none of the record's first authors appear in the cited reference`;
+        return withRetraction({ verdict:'review', label:'DOI: Details Differ', best: doiHit,
+          note:`The DOI resolves, but ${why}. Compare the record below with what you cited.` });
+      }
+      return withRetraction({ verdict:'verified', label:'DOI Confirmed', best: doiHit });
+    }
+
+    if (results.some(r => r.doiUnregistered)){
+      if (textBest && textBest.score >= 0.75){
+        const where = textBest.doi ? `DOI ${textBest.doi}` : textBest.source;
+        return { verdict:'review', label:'DOI Not Registered', best: textBest,
+          note:`Neither Crossref nor DataCite has a record of the cited DOI, but a paper matching the cited title was found (${where}). The DOI may be a typo, not registered yet, or invented — use the found record if it is the paper you meant.` };
+      }
+      return { verdict:'notfound', label:'DOI Not Registered', best: textBest && textBest.score >= 0.4 ? textBest : null,
+        note:`Neither Crossref nor DataCite has a record of this DOI, and no paper matching the cited title was found. Either the DOI was invented or it has not been registered yet (new conference papers can take months) — check by hand before citing.` };
+    }
+
     if (valid.length === 0){
       if (errors.length >= 2) return { verdict:'checkfail', label:'Check Failed', best:null };
       return { verdict:'notfound', label:'No Match Found', best:null };
     }
     const best = valid.reduce((a,b) => (b.score > a.score ? b : a));
-    if (best.score >= 0.75) return { verdict:'verified', label:'Verified', best };
-    if (best.score >= 0.4) return { verdict:'review', label:'Possible Match', best };
+    if (best.score >= 0.75) return withRetraction({ verdict:'verified', label:'Verified', best });
+    if (best.score >= 0.4) return withRetraction({ verdict:'review', label:'Possible Match', best });
     return { verdict:'notfound', label:'No Match Found', best };
   }
 
@@ -1549,7 +1732,7 @@ details.methodology code{
       </div>
       ${claimHtml}
       <div class="ref-text">${escapeHtml(ref)}</div>
-      <div id="body-${i}"><div class="pending-text">Querying Crossref, PubMed, Semantic Scholar, and arXiv…</div></div>
+      <div id="body-${i}"><div class="pending-text">Querying Crossref, DataCite, PubMed, and Semantic Scholar…</div></div>
       <div id="relevance-${i}"></div>
       <button class="retry-btn" id="retry-${i}" type="button">↻ Recheck this one</button>
     `;
@@ -1586,7 +1769,11 @@ details.methodology code{
     } else if (cls.verdict === 'checkfail'){
       html += '<div class="pending-text">Couldn\'t reach enough sources to check this one just now (likely a rate limit or network hiccup) — this is not a verdict either way. Try rechecking.</div>';
     } else {
-      html += '<div class="pending-text">No matching record found in Crossref, PubMed, Semantic Scholar, or arXiv. This does not confirm the reference is fabricated — it can also mean a very new paper, a non-English title, or a source these indexes under-cover. Worth a manual check before concluding anything.</div>';
+      html += '<div class="pending-text">No matching record found in Crossref, DataCite, PubMed, or Semantic Scholar. This does not confirm the reference is fabricated — it can also mean a very new paper, a non-English title, or a source these indexes under-cover. Worth a manual check before concluding anything.</div>';
+    }
+
+    if (cls.note){
+      html += `<div class="error-note">${escapeHtml(cls.note)}</div>`;
     }
 
     if (errors.length){
@@ -1887,7 +2074,7 @@ details.methodology code{
     const retryBtn = document.getElementById(`retry-${i}`);
     stampEl.className = 'stamp pending';
     stampEl.textContent = 'Checking…';
-    bodyEl.innerHTML = '<div class="pending-text">Re-querying Crossref, PubMed, Semantic Scholar, and arXiv…</div>';
+    bodyEl.innerHTML = '<div class="pending-text">Re-querying Crossref, DataCite, PubMed, and Semantic Scholar…</div>';
     if (retryBtn) retryBtn.classList.remove('show');
     const verification = await verifyReference(ref);
     updateCard(i, verification, claim);
