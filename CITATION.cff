@@ -20,3 +20,11 @@ keywords:
   - research integrity
   - retractions
   - Crossref
+doi: 10.5281/zenodo.24062770
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.24062770
+    description: All versions (concept DOI)
+  - type: doi
+    value: 10.5281/zenodo.24062771
+    description: Version 1.0.0
