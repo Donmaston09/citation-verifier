@@ -3,9 +3,20 @@
   "upload_type": "software",
   "description": "Checks each reference against Crossref, DataCite, PubMed and Semantic Scholar, and flags hallucinated, mismatched, unregistered or retracted citations for a person to review. It never changes the references.",
   "creators": [
-    { "name": "Onoja, Anthony", "affiliation": "University of Surrey" }
+    {
+      "name": "Onoja, Anthony",
+      "affiliation": "University of Surrey"
+    }
   ],
-  "license": "MIT",
-  "keywords": ["citation verification", "reference checking", "research integrity", "retractions", "Crossref"],
-  "access_right": "open"
+  "license": "mit",
+  "keywords": [
+    "citation verification",
+    "reference checking",
+    "research integrity",
+    "retractions",
+    "Crossref"
+  ],
+  "access_right": "open",
+  "version": "1.0.0",
+  "publication_date": "2026-11-08"
 }
